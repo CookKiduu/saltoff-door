@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Salt Off Door Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b3a5b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Doors">
+<style>
+/* Layout: one-thumb phone app. Sticky brand bar, three views, fixed tab bar at the bottom. */
+:root{
+  --bg:#f3f7f9; --surface:#ffffff; --ink:#0b2a40; --muted:#5b7384; --line:#d7e3ea;
+  --navy:#0b3a5b; --teal:#14a3b8; --teal-soft:#dff4f7;
+  --good:#1f8a4c; --good-soft:#e1f3e8; --warn:#b26b00; --warn-soft:#fbefd9; --bad:#b4322f; --bad-soft:#f8e1e0;
+  --display:"Avenir Next Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#071a27; --surface:#0d2636; --ink:#e6f1f6; --muted:#8fa8b7; --line:#1d3b4e;
+  --navy:#0e4a72; --teal:#33c3d6; --teal-soft:#0f3a46;
+  --good:#4cc27c; --good-soft:#12352a; --warn:#f0a83a; --warn-soft:#3a2c12; --bad:#f07470; --bad-soft:#3b1a1c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#071a27; --surface:#0d2636; --ink:#e6f1f6; --muted:#8fa8b7; --line:#1d3b4e;
+  --navy:#0e4a72; --teal:#33c3d6; --teal-soft:#0f3a46;
+  --good:#4cc27c; --good-soft:#12352a; --warn:#f0a83a; --warn-soft:#3a2c12; --bad:#f07470; --bad-soft:#3b1a1c;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:0}
+body{margin:0;font-size:15px}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:640px;margin:0 auto}
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--navy);color:#fff}
+header.bar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px}
+.brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.02em;line-height:1}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:3px}
+.sync{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.14);white-space:nowrap}
+main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+main .wrap{display:flex;flex-direction:column;gap:16px;padding-block:16px}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;letter-spacing:.01em;text-wrap:balance}
+.label{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.notice{font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:10px 12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
+textarea{min-height:84px;resize:vertical}
+/* stats strip */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center;min-width:0}
+.stat b{display:block;font-family:var(--display);font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.money{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.money b{font-family:var(--display);font-size:34px;font-variant-numeric:tabular-nums;color:var(--good)}
+/* tap pad */
+.pad{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tap{border:0;border-radius:16px;min-height:96px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;font-weight:600;font-size:16px;transition:transform .08s}
+.tap:active{transform:scale(.97)}
+.tap em{font-style:normal;font-weight:500;font-size:12px;opacity:.8}
+.t-none{background:var(--surface);border:1px solid var(--line)}
+.t-no{background:var(--bad-soft);color:var(--bad)}
+.t-maybe{background:var(--warn-soft);color:var(--warn)}
+.t-yes{background:var(--good);color:#fff;grid-column:1/-1;min-height:84px;font-size:18px}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px}
+.primary{background:var(--teal);color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:600;font-size:16px}
+.danger{background:var(--bad-soft);color:var(--bad);border:0;border-radius:10px;padding:10px 14px;font-weight:600}
+.timer{font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}
+/* leads */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.lead{display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+.lead .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.lead .name{font-weight:600;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lead .meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.pill{flex:none;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:999px}
+.s-follow{background:var(--warn-soft);color:var(--warn)} .s-booked{background:var(--teal-soft);color:var(--teal)}
+.s-done{background:var(--good-soft);color:var(--good)} .s-quarterly{background:var(--navy);color:#fff}
+.s-lost{background:var(--bad-soft);color:var(--bad)}
+.due{color:var(--warn);font-weight:600}
+.list{display:flex;flex-direction:column;gap:8px}
+.empty{color:var(--muted);text-align:center;padding:24px 8px;font-size:14px}
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(3,15,24,.55);display:flex;align-items:flex-end}
+.sheet .panel{background:var(--surface);width:100%;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding-block:18px calc(18px + env(safe-area-inset-bottom,0px))}
+.form{display:flex;flex-direction:column;gap:12px}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* history table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+/* tab bar */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+nav.tabs button{background:none;border:0;padding:12px 4px 10px;font-weight:600;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--teal)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:30}
+@media (prefers-reduced-motion: reduce){.tap{transition:none}}
+</style>
+</head>
+<body>
+
+
+<header class="bar"><div class="wrap">
+  <div class="brand">SALT OFF<small>Door tracker</small></div>
+  <button class="sync" id="backup-btn" type="button" style="border:0;color:#fff">Backup</button>
+</div></header>
+
+<main>
+  <!-- KNOCK -->
+  <section id="v-knock"><div class="wrap">
+    <div class="row">
+      <div class="grow"><div class="label" id="today-label">Today</div><h2>Tonight's session</h2></div>
+      <div style="text-align:right"><div class="timer" id="timer">0:00</div><button class="ghost" id="timer-btn" type="button">Start timer</button></div>
+    </div>
+    <input id="area" placeholder="Street or area (e.g. Whiskey Creek)" autocomplete="off">
+    <div class="stats">
+      <div class="stat"><b id="s-doors">0</b><span>Doors</span></div>
+      <div class="stat"><b id="s-ans">0</b><span>Answered</span></div>
+      <div class="stat"><b id="s-yes">0</b><span>Sales</span></div>
+      <div class="stat"><b id="s-rate">0%</b><span>Close</span></div>
+    </div>
+    <div class="card money"><div><div class="label">Booked today</div><div class="meta" style="font-size:13px;color:var(--muted)" id="s-ppd">$0 per door</div></div><b id="s-money">$0</b></div>
+    <div class="pad">
+      <button class="tap t-none" type="button" data-act="none">No answer<em>door +1</em></button>
+      <button class="tap t-no" type="button" data-act="no">Talked, no<em>answered +1</em></button>
+      <button class="tap t-maybe" type="button" data-act="maybe" style="grid-column:1/-1">Maybe / call back<em>saves a lead to follow up</em></button>
+      <button class="tap t-yes" type="button" data-act="yes">Sold, book it<em>enter name, price and day</em></button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="ghost" id="undo" type="button">Undo last tap</button>
+      <span class="label" id="last"></span>
+    </div>
+  </div></section>
+
+  <!-- LEADS -->
+  <section id="v-leads" hidden><div class="wrap">
+    <div class="row"><h2 class="grow">Leads and clients</h2><button class="primary" id="add-lead" type="button">+ Add</button></div>
+    <input id="search" placeholder="Search name, street or notes" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <div class="list" id="leads"></div>
+  </div></section>
+
+  <!-- STATS -->
+  <section id="v-stats" hidden><div class="wrap">
+    <h2>All-time numbers</h2>
+    <div class="stats">
+      <div class="stat"><b id="a-doors">0</b><span>Doors</span></div>
+      <div class="stat"><b id="a-yes">0</b><span>Sales</span></div>
+      <div class="stat"><b id="a-rate">0%</b><span>Close</span></div>
+      <div class="stat"><b id="a-hr">$0</b><span>Per hour</span></div>
+    </div>
+    <div class="card money"><div><div class="label">Total booked</div><div style="font-size:13px;color:var(--muted)" id="a-q">0 on quarterly plans</div></div><b id="a-money">$0</b></div>
+    <div class="card"><div class="label" style="margin-bottom:8px">Session log</div>
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Area</th><th>Hrs</th><th>Doors</th><th>Ans</th><th>Sales</th><th>Close</th><th>Booked</th></tr></thead><tbody id="log"></tbody></table></div>
+    </div>
+    <div class="card form" id="backup-card"><div class="label">Backup</div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">Your data lives only on this phone. Once a week, tap Copy backup and paste it into a note. To restore, paste a backup below and tap Restore.</p>
+      <div class="row"><button class="primary" type="button" id="copy-backup">Copy backup</button><span class="label" id="backup-msg"></span></div>
+      <textarea id="restore-box" placeholder="Paste a backup here to restore"></textarea>
+      <div id="restore-area"><button class="ghost" type="button" id="restore-btn">Restore from backup</button></div>
+    </div>
+    <p class="label" style="text-transform:none;letter-spacing:0;font-weight:500">Close rate = sales ÷ people who answered. Per hour uses timed sessions only.</p>
+  </div></section>
+</main>
+
+<nav class="tabs" aria-label="Views"><div class="wrap">
+  <button type="button" data-view="knock" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1" fill="currentColor"/></svg>Knock</button>
+  <button type="button" data-view="leads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 11h5M19.5 8.5v5"/></svg>Leads</button>
+  <button type="button" data-view="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+</div></nav>
+
+<div class="sheet" id="sheet" hidden><div class="panel"><div class="wrap form" id="sheet-body"></div></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const LS="saltoff-tracker-v1";
+const STATUSES=[["follow","Follow up"],["booked","Booked"],["done","Done"],["quarterly","Quarterly"],["lost","Lost"]];
+const SL=Object.fromEntries(STATUSES);
+let docs={};            // id -> body
+let filter="all";
+let undoStack=[];
+let tick=null;
+
+const todayKey=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const dayId=()=>"day-"+todayKey();
+const money=n=>"$"+Math.round(n||0).toLocaleString("en-US");
+const pct=(a,b)=>b?Math.round(a/b*100)+"%":"0%";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate=k=>{if(!k)return"";const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"short",day:"numeric"})};
+
+/* ---------- storage ---------- */
+function loadLocal(){try{const raw=localStorage.getItem(LS);return raw?JSON.parse(raw):{}}catch(e){return{}}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(docs))}catch(e){}}
+function write(id,body){
+  if(body===null)delete docs[id]; else docs[id]=body;
+  saveLocal();
+}
+/* ---------- day session ---------- */
+function today(){
+  const id=dayId();
+  return docs[id]?JSON.parse(JSON.stringify(docs[id])):{kind:"day",date:todayKey(),area:"",doors:0,answered:0,yes:0,no:0,maybe:0,booked:0,seconds:0,startedAt:null};
+}
+function saveToday(d){write(dayId(),d)}
+function elapsed(d){return (d.seconds||0)+(d.startedAt?Math.floor((Date.now()-d.startedAt)/1000):0)}
+
+function tap(act,extra){
+  const d=today();
+  d.doors++;
+  if(act!=="none")d.answered++;
+  if(act==="no")d.no++;
+  if(act==="maybe")d.maybe++;
+  if(act==="yes"){d.yes++;d.booked+=Number(extra&&extra.price)||0}
+  if(!d.area)d.area=$("#area").value.trim();
+  saveToday(d);
+  undoStack.push({act,price:extra&&extra.price||0,leadId:extra&&extra.leadId||null});
+  const names={none:"No answer",no:"Talked, no",maybe:"Maybe saved",yes:"Sale booked"};
+  $("#last").textContent="Last: "+names[act];
+  render();
+}
+function undo(){
+  const u=undoStack.pop(); if(!u){toast("Nothing to undo");return}
+  const d=today();
+  d.doors=Math.max(0,d.doors-1);
+  if(u.act!=="none")d.answered=Math.max(0,d.answered-1);
+  if(u.act==="no")d.no=Math.max(0,d.no-1);
+  if(u.act==="maybe")d.maybe=Math.max(0,d.maybe-1);
+  if(u.act==="yes"){d.yes=Math.max(0,d.yes-1);d.booked=Math.max(0,d.booked-(Number(u.price)||0))}
+  saveToday(d);
+  if(u.leadId&&docs[u.leadId])write(u.leadId,null);
+  $("#last").textContent="Undid last tap";
+  render();
+}
+
+/* ---------- lead sheet ---------- */
+function openLead(id,preset){
+  const L=id&&docs[id]?docs[id]:Object.assign({kind:"lead",name:"",address:"",phone:"",status:"follow",price:"",jobDate:"",followUp:"",notes:"",windows:"",createdAt:todayKey()},preset||{});
+  const isNew=!id;
+  const fromTap=preset&&preset._tap;
+  $("#sheet-body").innerHTML=`
+    <div class="row"><h2 class="grow">${fromTap==="yes"?"Book the sale":fromTap==="maybe"?"Save a follow-up":isNew?"New lead":"Edit lead"}</h2><button class="ghost" type="button" id="f-cancel">Cancel</button></div>
+    <label>Name<input id="f-name" value="${esc(L.name)}" autocomplete="off" placeholder="e.g. Mrs. Johnson"></label>
+    <label>Address<input id="f-address" value="${esc(L.address||$("#area").value)}" autocomplete="off" placeholder="House number and street"></label>
+    <div class="two">
+      <label>Phone<input id="f-phone" value="${esc(L.phone)}" inputmode="tel" autocomplete="off"></label>
+      <label>Status<select id="f-status">${STATUSES.map(([k,v])=>`<option value="${k}" ${L.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    </div>
+    <div class="two">
+      <label>Price ($)<input id="f-price" value="${esc(L.price)}" inputmode="decimal" placeholder="199"></label>
+      <label>Windows<input id="f-windows" value="${esc(L.windows)}" inputmode="numeric" placeholder="22"></label>
+    </div>
+    <div class="two">
+      <label>Job day<input id="f-job" type="date" value="${esc(L.jobDate)}"></label>
+      <label>Follow up on<input id="f-follow" type="date" value="${esc(L.followUp)}"></label>
+    </div>
+    <label>Notes<textarea id="f-notes" placeholder="Gate code, dog, screens, wants quarterly…">${esc(L.notes)}</textarea></label>
+    <button class="primary" type="button" id="f-save">${fromTap==="yes"?"Save sale":"Save"}</button>
+    ${!isNew?`<div id="del-area"><button class="danger" type="button" id="f-del">Delete lead</button></div>`:""}`;
+  $("#sheet").hidden=false;
+  setTimeout(()=>{const n=$("#f-name");n&&n.focus()},50);
+  $("#f-cancel").onclick=closeSheet;
+  $("#f-save").onclick=()=>{
+    const body={kind:"lead",createdAt:L.createdAt||todayKey(),
+      name:$("#f-name").value.trim(),address:$("#f-address").value.trim(),phone:$("#f-phone").value.trim(),
+      status:$("#f-status").value,price:$("#f-price").value.trim(),windows:$("#f-windows").value.trim(),
+      jobDate:$("#f-job").value,followUp:$("#f-follow").value,notes:$("#f-notes").value.trim()};
+    if(!body.name&&!body.address){toast("Add a name or an address");return}
+    const newId=id||("lead-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    write(newId,body);
+    if(fromTap)tap(fromTap,{price:fromTap==="yes"?(Number(body.price)||0):0,leadId:newId});
+    closeSheet(); toast(fromTap==="yes"?"Sale booked":"Lead saved"); render();
+  };
+  const del=$("#f-del");
+  if(del)del.onclick=()=>{
+    $("#del-area").innerHTML=`<div class="row"><span class="grow" style="font-size:14px">Delete this lead for good?</span><button class="ghost" type="button" id="f-no">Keep</button><button class="danger" type="button" id="f-yes">Delete</button></div>`;
+    $("#f-no").onclick=()=>openLead(id);
+    $("#f-yes").onclick=()=>{write(id,null);closeSheet();toast("Lead deleted");render()};
+  };
+}
+function closeSheet(){$("#sheet").hidden=true;$("#sheet-body").innerHTML=""}
+
+/* ---------- render ---------- */
+function render(){
+  const d=today();
+  $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  if(document.activeElement!==$("#area"))$("#area").value=d.area||"";
+  $("#s-doors").textContent=d.doors; $("#s-ans").textContent=d.answered; $("#s-yes").textContent=d.yes;
+  $("#s-rate").textContent=pct(d.yes,d.answered); $("#s-money").textContent=money(d.booked);
+  $("#s-ppd").textContent=money(d.doors?d.booked/d.doors:0)+" per door";
+  renderTimer(d);
+
+  // leads
+  const q=$("#search").value.trim().toLowerCase();
+  const leads=Object.entries(docs).filter(([,b])=>b&&b.kind==="lead");
+  const counts={all:leads.length}; STATUSES.forEach(([k])=>counts[k]=leads.filter(([,b])=>b.status===k).length);
+  $("#chips").innerHTML=[["all","All"],...STATUSES].map(([k,v])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${filter===k}">${v} ${counts[k]||0}</button>`).join("");
+  const tk=todayKey();
+  let list=leads.filter(([,b])=>(filter==="all"||b.status===filter)&&(!q||[b.name,b.address,b.notes,b.phone].join(" ").toLowerCase().includes(q)));
+  const sortKey=b=>b.status==="follow"?(b.followUp||"9999"):b.status==="booked"?(b.jobDate||"9999"):"z"+(b.createdAt||"");
+  list.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1])));
+  $("#leads").innerHTML=list.length?list.map(([id,b])=>{
+    const when=b.status==="follow"&&b.followUp?`<span class="${b.followUp<=tk?"due":""}">Follow up ${fmtDate(b.followUp)}${b.followUp<=tk?" (due)":""}</span>`:b.jobDate?`Job ${fmtDate(b.jobDate)}`:"";
+    return `<button class="lead" type="button" data-id="${id}">
+      <div class="top"><span class="name">${esc(b.name||b.address)}</span><span class="pill s-${b.status}">${SL[b.status]||b.status}</span></div>
+      <div class="meta">${[b.name?esc(b.address):"",b.phone?esc(b.phone):"",b.price?money(b.price):"",when].filter(Boolean).join(" · ")}</div>
+      ${b.notes?`<div class="meta">${esc(b.notes)}</div>`:""}</button>`}).join("")
+    :`<div class="empty">${leads.length?"No leads match.":"No leads yet. Tap <b>Maybe</b> or <b>Sold</b> on the Knock tab, or use + Add."}</div>`;
+
+  // stats
+  const days=Object.values(docs).filter(b=>b&&b.kind==="day").sort((a,b)=>b.date.localeCompare(a.date));
+  const T=days.reduce((t,x)=>({doors:t.doors+x.doors,ans:t.ans+x.answered,yes:t.yes+x.yes,booked:t.booked+x.booked,sec:t.sec+elapsed(x),tb:t.tb+(elapsed(x)?x.booked:0)}),{doors:0,ans:0,yes:0,booked:0,sec:0,tb:0});
+  $("#a-doors").textContent=T.doors; $("#a-yes").textContent=T.yes; $("#a-rate").textContent=pct(T.yes,T.ans);
+  $("#a-hr").textContent=T.sec>=600?money(T.tb/(T.sec/3600)):"–";
+  $("#a-money").textContent=money(T.booked);
+  $("#a-q").textContent=counts.quarterly+" on quarterly plans";
+  $("#log").innerHTML=days.length?days.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.area||"–")}</td><td>${elapsed(x)?(elapsed(x)/3600).toFixed(1):"–"}</td><td>${x.doors}</td><td>${x.answered}</td><td>${x.yes}</td><td>${pct(x.yes,x.answered)}</td><td>${money(x.booked)}</td></tr>`).join(""):`<tr><td colspan="8" class="empty" style="text-align:center">Your sessions show up here after your first tap.</td></tr>`;
+}
+function renderTimer(d){
+  const s=elapsed(d);
+  $("#timer").textContent=Math.floor(s/3600)+":"+String(Math.floor(s%3600/60)).padStart(2,"0");
+  $("#timer-btn").textContent=d.startedAt?"Stop timer":"Start timer";
+  if(d.startedAt&&!tick)tick=setInterval(()=>renderTimer(today()),15000);
+  if(!d.startedAt&&tick){clearInterval(tick);tick=null}
+}
+let toastT=null;
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1800)}
+
+/* ---------- wire up ---------- */
+document.querySelectorAll(".tap").forEach(b=>b.addEventListener("click",()=>{
+  const a=b.dataset.act;
+  if(a==="yes")openLead(null,{_tap:"yes",status:"booked",price:"199"});
+  else if(a==="maybe")openLead(null,{_tap:"maybe",status:"follow"});
+  else tap(a);
+}));
+$("#undo").onclick=undo;
+$("#timer-btn").onclick=()=>{const d=today();if(d.startedAt){d.seconds=elapsed(d);d.startedAt=null}else{d.startedAt=Date.now()}if(!d.area)d.area=$("#area").value.trim();saveToday(d);render()};
+let areaT=null;
+$("#area").addEventListener("input",()=>{clearTimeout(areaT);areaT=setTimeout(()=>{const d=today();d.area=$("#area").value.trim();saveToday(d)},700)});
+$("#add-lead").onclick=()=>openLead(null);
+$("#search").addEventListener("input",render);
+$("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){filter=c.dataset.f;render()}});
+$("#leads").addEventListener("click",e=>{const l=e.target.closest(".lead");if(l)openLead(l.dataset.id)});
+$("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet()});
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.removeAttribute("aria-current"));
+  b.setAttribute("aria-current","page");
+  ["knock","leads","stats"].forEach(v=>$("#v-"+v).hidden=v!==b.dataset.view);
+  window.scrollTo(0,0); render();
+}));
+
+/* ---------- backup ---------- */
+function backupText(){return "SALTOFF-BACKUP "+JSON.stringify(docs)}
+$("#copy-backup").onclick=()=>{
+  const t=backupText();
+  const done=()=>{$("#backup-msg").textContent="Copied. Paste it into a note.";};
+  try{navigator.clipboard.writeText(t).then(done,()=>{$("#restore-box").value=t;$("#restore-box").select();$("#backup-msg").textContent="Select all and copy the text below.";});}
+  catch(e){$("#restore-box").value=t;$("#restore-box").select();$("#backup-msg").textContent="Select all and copy the text below.";}
+};
+$("#backup-btn").onclick=()=>{document.querySelector('nav.tabs button[data-view="stats"]').click();setTimeout(()=>$("#backup-card").scrollIntoView({behavior:"smooth"}),50)};
+function onRestore(){
+  const raw=$("#restore-box").value.trim().replace(/^SALTOFF-BACKUP\s*/,"");
+  let data; try{data=JSON.parse(raw)}catch(e){toast("That isn't a valid backup");return}
+  if(!data||typeof data!=="object"||Array.isArray(data)){toast("That isn't a valid backup");return}
+  $("#restore-area").innerHTML='<div class="row"><span class="grow" style="font-size:14px">Replace everything on this phone with this backup?</span><button class="ghost" type="button" id="r-no">Cancel</button><button class="danger" type="button" id="r-yes">Replace</button></div>';
+  $("#r-no").onclick=resetRestore;
+  $("#r-yes").onclick=()=>{docs=data;saveLocal();resetRestore();$("#restore-box").value="";render();toast("Backup restored")};
+}
+function resetRestore(){$("#restore-area").innerHTML='<button class="ghost" type="button" id="restore-btn">Restore from backup</button>';$("#restore-btn").onclick=onRestore}
+$("#restore-btn").onclick=onRestore;
+docs=loadLocal(); render();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+})();
+</script>
+
+</body>
+</html>
