@@ -3,395 +3,770 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Salt Off Door Tracker</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<title>Salt Off Doors</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Doors">
 <meta name="theme-color" content="#0b3a5b">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-title" content="Doors">
 <style>
-/* Layout: one-thumb phone app. Sticky brand bar, three views, fixed tab bar at the bottom. */
+/* Layout: one-thumb phone app. Sticky brand bar, three views, fixed tab bar at the bottom.
+   System fonts only so the app works with no internet. */
 :root{
   --bg:#f3f7f9; --surface:#ffffff; --ink:#0b2a40; --muted:#5b7384; --line:#d7e3ea;
   --navy:#0b3a5b; --teal:#14a3b8; --teal-soft:#dff4f7;
   --good:#1f8a4c; --good-soft:#e1f3e8; --warn:#b26b00; --warn-soft:#fbefd9; --bad:#b4322f; --bad-soft:#f8e1e0;
   --display:"Avenir Next Condensed","Arial Narrow",system-ui,sans-serif;
-  --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --radius:14px;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+@media (prefers-color-scheme: dark){:root{
   --bg:#071a27; --surface:#0d2636; --ink:#e6f1f6; --muted:#8fa8b7; --line:#1d3b4e;
   --navy:#0e4a72; --teal:#33c3d6; --teal-soft:#0f3a46;
-  --good:#4cc27c; --good-soft:#12352a; --warn:#f0a83a; --warn-soft:#3a2c12; --bad:#f07470; --bad-soft:#3b1a1c;
+  --good:#2f9e5d; --good-soft:#12352a; --warn:#f0a83a; --warn-soft:#3a2c12; --bad:#f07470; --bad-soft:#3b1a1c;
   color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#071a27; --surface:#0d2636; --ink:#e6f1f6; --muted:#8fa8b7; --line:#1d3b4e;
-  --navy:#0e4a72; --teal:#33c3d6; --teal-soft:#0f3a46;
-  --good:#4cc27c; --good-soft:#12352a; --warn:#f0a83a; --warn-soft:#3a2c12; --bad:#f07470; --bad-soft:#3b1a1c;
-  color-scheme:dark}
 *{box-sizing:border-box}
-html{padding-top:0}
-body{margin:0;font-size:15px}
+html{-webkit-text-size-adjust:100%}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.35;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--navy)}
 [hidden]{display:none!important}
-html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
+button{cursor:pointer;touch-action:manipulation}
+a{color:inherit}
 :focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:640px;margin:0 auto}
+
 header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--navy);color:#fff}
 header.bar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px}
 .brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.02em;line-height:1}
 .brand small{display:block;font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-top:3px}
-.sync{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.14);white-space:nowrap}
-main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
-main .wrap{display:flex;flex-direction:column;gap:16px;padding-block:16px}
-h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;letter-spacing:.01em;text-wrap:balance}
+.pillbtn{border:0;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.14);white-space:nowrap}
+.pillbtn.warn{background:#f0a83a;color:#2b1a00}
+
+main{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+main .wrap{display:flex;flex-direction:column;gap:14px;padding-block:14px}
+h2{font-family:var(--display);font-weight:700;font-size:21px;margin:0;letter-spacing:.01em;line-height:1.1}
 .label{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.small{font-size:13px;color:var(--muted);margin:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-.notice{font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:10px 12px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .grow{flex:1;min-width:0}
-input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
-textarea{min-height:84px;resize:vertical}
-/* stats strip */
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;color:var(--ink);min-height:46px}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+textarea{min-height:76px;resize:vertical}
+
+.nag{display:flex;align-items:center;gap:10px;background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600}
+.nag button{margin-left:auto;flex:none;border:0;border-radius:999px;padding:7px 12px;background:var(--warn);color:#fff;font-weight:700;font-size:13px}
+
+/* stats */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center;min-width:0}
-.stat b{display:block;font-family:var(--display);font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;min-width:0}
+.stat b{display:flex;align-items:center;justify-content:center;height:34px;font-family:var(--display);font-size:clamp(22px,7.4vw,30px);line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat.m b{font-size:clamp(18px,5.6vw,28px);color:var(--good)}
 .stat span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.money{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.money b{font-family:var(--display);font-size:34px;font-variant-numeric:tabular-nums;color:var(--good)}
+.sub{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--muted);padding-inline:2px}
+.sub b{color:var(--ink);font-variant-numeric:tabular-nums}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.2)}100%{transform:scale(1)}}
+.bump{animation:bump .22s ease-out}
+
 /* tap pad */
 .pad{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tap{border:0;border-radius:16px;min-height:96px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;font-weight:600;font-size:16px;transition:transform .08s}
+.pad.top{grid-template-columns:2fr 1fr}
+.tap{border:0;border-radius:18px;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:700;font-size:18px;min-height:60px;user-select:none;-webkit-user-select:none;transition:transform .08s}
 .tap:active{transform:scale(.97)}
 .tap em{font-style:normal;font-weight:500;font-size:12px;opacity:.8}
-.t-none{background:var(--surface);border:1px solid var(--line)}
-.t-no{background:var(--bad-soft);color:var(--bad)}
-.t-maybe{background:var(--warn-soft);color:var(--warn)}
-.t-yes{background:var(--good);color:#fff;grid-column:1/-1;min-height:84px;font-size:18px}
-.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px}
-.primary{background:var(--teal);color:#fff;border:0;border-radius:10px;padding:12px 16px;font-weight:600;font-size:16px}
-.danger{background:var(--bad-soft);color:var(--bad);border:0;border-radius:10px;padding:10px 14px;font-weight:600}
-.timer{font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}
-/* leads */
-.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
-.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600}
+.t-maybe{background:var(--warn-soft);color:var(--warn);font-size:16px}
+.t-undo{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:15px}
+.t-yes{grid-column:1/-1;min-height:92px;background:var(--good);color:#fff;font-size:26px;letter-spacing:.08em}
+.t-none{min-height:120px;background:var(--surface);border:1px solid var(--line)}
+.t-no{min-height:120px;background:var(--bad-soft);color:var(--bad)}
+.last{text-align:center;min-height:16px}
+
+/* customers */
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chips.multi{flex-wrap:wrap;overflow:visible}
+.chip{flex:none;min-height:42px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
 .chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
-.lead{display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
-.lead .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.lead .name{font-weight:600;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lead .meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.dot{min-width:18px;height:18px;border-radius:9px;padding:0 5px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;display:inline-grid;place-items:center}
+.list{display:flex;flex-direction:column;gap:10px}
+.cust{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.cust.isdue{border-color:var(--warn)}
+.cust .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.cust .name{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.when{font-size:14px;font-weight:600}
+.when.due{color:var(--warn)} .when.late{color:var(--bad)}
 .pill{flex:none;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:999px}
 .s-follow{background:var(--warn-soft);color:var(--warn)} .s-booked{background:var(--teal-soft);color:var(--teal)}
 .s-done{background:var(--good-soft);color:var(--good)} .s-quarterly{background:var(--navy);color:#fff}
 .s-lost{background:var(--bad-soft);color:var(--bad)}
-.due{color:var(--warn);font-weight:600}
-.list{display:flex;flex-direction:column;gap:8px}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}
+.act{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:14px;text-decoration:none;padding:0 4px;white-space:nowrap}
+.act.go{background:var(--good);border-color:var(--good);color:#fff}
+.act.off{opacity:.35;pointer-events:none}
 .empty{color:var(--muted);text-align:center;padding:24px 8px;font-size:14px}
-/* sheet */
-.sheet{position:fixed;inset:0;z-index:20;background:rgba(3,15,24,.55);display:flex;align-items:flex-end}
-.sheet .panel{background:var(--surface);width:100%;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding-block:18px calc(18px + env(safe-area-inset-bottom,0px))}
-.form{display:flex;flex-direction:column;gap:12px}
-.form label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+
+/* numbers */
+.pipe{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.pipe div{display:flex;justify-content:space-between;gap:10px}
+.pipe b{font-variant-numeric:tabular-nums;text-align:right}
+.tip{font-size:14px;color:var(--teal);font-weight:600}
+.sess{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-bottom:1px solid var(--line)}
+.sess:last-child{border-bottom:0}
+.sess .top{display:flex;justify-content:space-between;gap:8px}
+.sess .amt{font-weight:700;color:var(--good);font-variant-numeric:tabular-nums}
+.foot{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 0}
+
+/* buttons */
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;min-height:42px}
+.primary{background:var(--teal);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:16px;min-height:46px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.goodbtn{background:var(--good);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:16px;min-height:46px}
+.big{width:100%;min-height:54px;flex-direction:column;gap:2px}
+.big small{display:block;font-weight:500;font-size:13px;opacity:.9}
+.danger{background:var(--bad-soft);color:var(--bad);border:0;border-radius:10px;padding:10px 14px;font-weight:600;min-height:42px}
+.linkbtn{border:0;background:none;padding:0;color:var(--teal);font-weight:700;text-decoration:underline;font-size:inherit}
+
+/* full-screen sheet (works better than a bottom sheet with the iPhone keyboard) */
+.sheet{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.sheet .wrap{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 28px)}
+.sheet-head{position:sticky;top:0;z-index:1;background:var(--surface);display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);margin-bottom:4px}
+.form{display:flex;flex-direction:column;gap:14px}
+.form label,.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+.field .chips{margin-bottom:2px}
+.addr{display:grid;grid-template-columns:96px 1fr;gap:10px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-/* history table */
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
-th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
-th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
-th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hint{margin:0;font-size:14px;font-weight:500;color:var(--ink)}
+
 /* tab bar */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
-nav.tabs button{background:none;border:0;padding:12px 4px 10px;font-weight:600;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button{position:relative;background:none;border:0;padding:10px 4px 9px;font-weight:600;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button[aria-current="page"]{color:var(--teal)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:30}
-@media (prefers-reduced-motion: reduce){.tap{transition:none}}
+nav.tabs .dot{position:absolute;top:5px;left:calc(50% + 6px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);width:max-content;text-align:center;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:18px;font-size:14px;font-weight:600;z-index:40}
+@media (prefers-reduced-motion: reduce){.tap{transition:none}.bump{animation:none}}
 </style>
 </head>
 <body>
 
-
 <header class="bar"><div class="wrap">
   <div class="brand">SALT OFF<small>Door tracker</small></div>
-  <button class="sync" id="backup-btn" type="button" style="border:0;color:#fff">Backup</button>
+  <button class="pillbtn" id="backup-pill" type="button">Backup</button>
 </div></header>
 
 <main>
   <!-- KNOCK -->
   <section id="v-knock"><div class="wrap">
-    <div class="row">
-      <div class="grow"><div class="label" id="today-label">Today</div><h2>Tonight's session</h2></div>
-      <div style="text-align:right"><div class="timer" id="timer">0:00</div><button class="ghost" id="timer-btn" type="button">Start timer</button></div>
-    </div>
-    <input id="area" placeholder="Street or area (e.g. Whiskey Creek)" autocomplete="off">
+    <div id="nag" hidden></div>
+    <div><div class="label" id="today-label">Today</div><h2>Today's session</h2></div>
+    <input id="street" placeholder="Street you're on (optional)" autocomplete="off" autocapitalize="words">
     <div class="stats">
-      <div class="stat"><b id="s-doors">0</b><span>Doors</span></div>
-      <div class="stat"><b id="s-ans">0</b><span>Answered</span></div>
-      <div class="stat"><b id="s-yes">0</b><span>Sales</span></div>
-      <div class="stat"><b id="s-rate">0%</b><span>Close</span></div>
+      <div class="stat"><b id="k-doors">0</b><span>Doors</span></div>
+      <div class="stat"><b id="k-talk">0</b><span>Talked</span></div>
+      <div class="stat"><b id="k-sold">0</b><span>Sold</span></div>
+      <div class="stat m"><b id="k-booked">$0</b><span>Booked</span></div>
     </div>
-    <div class="card money"><div><div class="label">Booked today</div><div class="meta" style="font-size:13px;color:var(--muted)" id="s-ppd">$0 per door</div></div><b id="s-money">$0</b></div>
+    <div class="sub"><span>Close <b id="k-close">0%</b></span><span><b id="k-ppd">$0</b> per door</span><span><b id="k-time">0:00</b> session</span></div>
+    <div class="pad top">
+      <button class="tap t-maybe" type="button" data-act="maybe">Maybe / call back</button>
+      <button class="tap t-undo" type="button" id="undo">Undo</button>
+    </div>
     <div class="pad">
+      <button class="tap t-yes" type="button" data-act="yes">SOLD</button>
       <button class="tap t-none" type="button" data-act="none">No answer<em>door +1</em></button>
-      <button class="tap t-no" type="button" data-act="no">Talked, no<em>answered +1</em></button>
-      <button class="tap t-maybe" type="button" data-act="maybe" style="grid-column:1/-1">Maybe / call back<em>saves a lead to follow up</em></button>
-      <button class="tap t-yes" type="button" data-act="yes">Sold, book it<em>enter name, price and day</em></button>
+      <button class="tap t-no" type="button" data-act="no">Talked, no<em>talked +1</em></button>
     </div>
-    <div class="row" style="justify-content:space-between">
-      <button class="ghost" id="undo" type="button">Undo last tap</button>
-      <span class="label" id="last"></span>
-    </div>
+    <div class="label last" id="last"></div>
   </div></section>
 
-  <!-- LEADS -->
-  <section id="v-leads" hidden><div class="wrap">
-    <div class="row"><h2 class="grow">Leads and clients</h2><button class="primary" id="add-lead" type="button">+ Add</button></div>
-    <input id="search" placeholder="Search name, street or notes" autocomplete="off">
-    <div class="chips" id="chips"></div>
-    <div class="list" id="leads"></div>
+  <!-- CUSTOMERS -->
+  <section id="v-customers" hidden><div class="wrap">
+    <div class="row"><h2 class="grow">Customers</h2><button class="primary" id="add" type="button">+ Add</button></div>
+    <input id="search" type="search" placeholder="Search name, street, phone or notes" autocomplete="off">
+    <div class="chips" id="cfilter"></div>
+    <div class="list" id="clist"></div>
   </div></section>
 
-  <!-- STATS -->
-  <section id="v-stats" hidden><div class="wrap">
-    <h2>All-time numbers</h2>
-    <div class="stats">
-      <div class="stat"><b id="a-doors">0</b><span>Doors</span></div>
-      <div class="stat"><b id="a-yes">0</b><span>Sales</span></div>
-      <div class="stat"><b id="a-rate">0%</b><span>Close</span></div>
-      <div class="stat"><b id="a-hr">$0</b><span>Per hour</span></div>
+  <!-- NUMBERS -->
+  <section id="v-numbers" hidden><div class="wrap">
+    <h2>Numbers</h2>
+    <div class="chips" id="period">
+      <button class="chip" type="button" data-p="today">Today</button>
+      <button class="chip" type="button" data-p="week">This week</button>
+      <button class="chip" type="button" data-p="all">All time</button>
     </div>
-    <div class="card money"><div><div class="label">Total booked</div><div style="font-size:13px;color:var(--muted)" id="a-q">0 on quarterly plans</div></div><b id="a-money">$0</b></div>
-    <div class="card"><div class="label" style="margin-bottom:8px">Session log</div>
-      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Area</th><th>Hrs</th><th>Doors</th><th>Ans</th><th>Sales</th><th>Close</th><th>Booked</th></tr></thead><tbody id="log"></tbody></table></div>
+    <div class="grid3">
+      <div class="stat"><b id="n-doors">0</b><span>Doors</span></div>
+      <div class="stat"><b id="n-sold">0</b><span>Sold</span></div>
+      <div class="stat"><b id="n-close">0%</b><span>Close</span></div>
+      <div class="stat m"><b id="n-booked">$0</b><span>Booked</span></div>
+      <div class="stat"><b id="n-ppd">$0</b><span>Per door</span></div>
+      <div class="stat"><b id="n-hr">–</b><span>Per hour</span></div>
     </div>
-    <div class="card form" id="backup-card"><div class="label">Backup</div>
-      <p style="margin:0;font-size:14px;color:var(--muted)">Your data lives only on this phone. Once a week, tap Copy backup and paste it into a note. To restore, paste a backup below and tap Restore.</p>
-      <div class="row"><button class="primary" type="button" id="copy-backup">Copy backup</button><span class="label" id="backup-msg"></span></div>
+    <p class="small" id="n-note"></p>
+    <div class="tip" id="n-tip" hidden></div>
+    <div class="card"><div class="label" style="margin-bottom:10px">Pipeline</div><div class="pipe" id="pipe"></div></div>
+    <div class="card"><div class="label">Sessions</div><div id="sessions"></div></div>
+    <div class="card form" id="backup-card">
+      <div class="label">Backup</div>
+      <p class="small" id="backup-info">Your data lives only on this phone.</p>
+      <div class="row">
+        <button class="primary" type="button" id="copy-backup">Copy backup</button>
+        <button class="ghost" type="button" id="share-backup" hidden>Share to Notes…</button>
+      </div>
+      <p class="small" id="backup-msg" hidden></p>
       <textarea id="restore-box" placeholder="Paste a backup here to restore"></textarea>
-      <div id="restore-area"><button class="ghost" type="button" id="restore-btn">Restore from backup</button></div>
+      <div id="restore-area"></div>
     </div>
-    <p class="label" style="text-transform:none;letter-spacing:0;font-weight:500">Close rate = sales ÷ people who answered. Per hour uses timed sessions only.</p>
+    <p class="foot" id="foot"></p>
   </div></section>
 </main>
 
 <nav class="tabs" aria-label="Views"><div class="wrap">
   <button type="button" data-view="knock" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1" fill="currentColor"/></svg>Knock</button>
-  <button type="button" data-view="leads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 11h5M19.5 8.5v5"/></svg>Leads</button>
-  <button type="button" data-view="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+  <button type="button" data-view="customers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 11h5M19.5 8.5v5"/></svg>Customers<span class="dot" id="badge" hidden></span></button>
+  <button type="button" data-view="numbers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Numbers</button>
 </div></nav>
 
-<div class="sheet" id="sheet" hidden><div class="panel"><div class="wrap form" id="sheet-body"></div></div></div>
+<div class="sheet" id="sheet" hidden><div class="wrap form" id="sheet-body"></div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 (function(){
 "use strict";
 const $=s=>document.querySelector(s);
-const LS="saltoff-tracker-v1";
-const STATUSES=[["follow","Follow up"],["booked","Booked"],["done","Done"],["quarterly","Quarterly"],["lost","Lost"]];
-const SL=Object.fromEntries(STATUSES);
-let docs={};            // id -> body
-let filter="all";
-let undoStack=[];
-let tick=null;
+const VERSION="2.0";
+const LS="saltoff-tracker-v1";          // records: day-YYYY-MM-DD and lead-<random>
+const META="saltoff-meta-v1";           // lastPrice, lastBackup, street, undo
+const BIZ="Salt Off Window Cleaning";
+const GAP=30*60*1000;                   // a pause longer than this between taps isn't counted as session time
+const PRICES=[149,199,249,299];
+const STATUS={follow:"Call back",booked:"Booked",quarterly:"Quarterly",done:"Done",lost:"Lost"};
+const NAMES={none:"No answer",no:"Talked, no",maybe:"Maybe saved",yes:"Sale booked"};
+let docs={}, meta={};
+let view="knock", filter="next", period="today", pendingReload=false;
 
-const todayKey=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
-const dayId=()=>"day-"+todayKey();
-const money=n=>"$"+Math.round(n||0).toLocaleString("en-US");
+/* ---------- helpers ---------- */
+const pad2=n=>String(n).padStart(2,"0");
+const keyOf=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+const todayKey=()=>keyOf(new Date());
+const parseKey=k=>{const [y,m,d]=String(k).split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(k,n)=>{const d=parseKey(k);d.setDate(d.getDate()+n);return keyOf(d)};
+const dow=k=>parseKey(k).getDay();
+const isWeekend=k=>{const w=dow(k);return w===0||w===6};
+const fmtShort=k=>k?parseKey(k).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}):"";
+const chipDay=k=>{const d=parseKey(k);return d.toLocaleDateString("en-US",{weekday:"short"})+" "+(d.getMonth()+1)+"/"+d.getDate()};
+const dayWord=k=>{const t=todayKey();if(k===t)return"today";if(k===addDays(t,1))return"tomorrow";return parseKey(k).toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};
+const money=n=>"$"+Math.round(Number(n)||0).toLocaleString("en-US");
+const perDoor=n=>(n>0&&n<10)?"$"+n.toFixed(2):money(n);
 const pct=(a,b)=>b?Math.round(a/b*100)+"%":"0%";
+const fmtDur=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/3600)+":"+pad2(Math.floor(s%3600/60))};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmtDate=k=>{if(!k)return"";const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"short",day:"numeric"})};
+const digits=p=>String(p||"").replace(/[^\d+]/g,"");
+const newId=()=>"lead-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const nextWeekend=()=>{const t=todayKey();for(let i=1;i<=7;i++){const k=addDays(t,i);if(isWeekend(k))return k}return addDays(t,1)};
 
 /* ---------- storage ---------- */
-function loadLocal(){try{const raw=localStorage.getItem(LS);return raw?JSON.parse(raw):{}}catch(e){return{}}}
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(docs))}catch(e){}}
-function write(id,body){
-  if(body===null)delete docs[id]; else docs[id]=body;
-  saveLocal();
+let warnedFull=false;
+function load(){
+  try{docs=JSON.parse(localStorage.getItem(LS)||"{}")}catch(e){docs={}}
+  if(!docs||typeof docs!=="object"||Array.isArray(docs))docs={};
+  try{meta=JSON.parse(localStorage.getItem(META)||"{}")}catch(e){meta={}}
+  if(!meta||typeof meta!=="object")meta={};
 }
+function persist(){
+  try{localStorage.setItem(LS,JSON.stringify(docs))}
+  catch(e){if(!warnedFull){warnedFull=true;toast("Phone storage is full. Copy a backup now.")}}
+}
+function saveMeta(){try{localStorage.setItem(META,JSON.stringify(meta))}catch(e){}}
+function put(id,body){if(body===null)delete docs[id];else docs[id]=body;persist()}
+const leads=()=>Object.entries(docs).filter(([,b])=>b&&b.kind==="lead");
+const days=()=>Object.values(docs).filter(b=>b&&b.kind==="day"&&b.date);
+
 /* ---------- day session ---------- */
-function today(){
-  const id=dayId();
-  return docs[id]?JSON.parse(JSON.stringify(docs[id])):{kind:"day",date:todayKey(),area:"",doors:0,answered:0,yes:0,no:0,maybe:0,booked:0,seconds:0,startedAt:null};
+const dayId=k=>"day-"+(k||todayKey());
+function getDay(k){
+  k=k||todayKey();
+  const d=docs[dayId(k)];
+  return d?Object.assign({},d):{kind:"day",date:k,area:"",doors:0,answered:0,yes:0,no:0,maybe:0,booked:0,seconds:0,firstAt:null,lastAt:null};
 }
-function saveToday(d){write(dayId(),d)}
-function elapsed(d){return (d.seconds||0)+(d.startedAt?Math.floor((Date.now()-d.startedAt)/1000):0)}
+// Session time = seconds + (lastAt - firstAt). Older records only have seconds.
+function secs(d){return (Number(d.seconds)||0)+(d.firstAt&&d.lastAt?Math.max(0,(d.lastAt-d.firstAt)/1000):0)}
+function stamp(d){
+  const now=Date.now();
+  if(!d.firstAt||!d.lastAt){d.firstAt=now;d.lastAt=now;return}
+  if(now-d.lastAt>GAP){d.seconds=(Number(d.seconds)||0)+Math.round((d.lastAt-d.firstAt)/1000);d.firstAt=now;d.lastAt=now}
+  else d.lastAt=now;
+}
+function addArea(d){
+  const st=$("#street").value.trim(); if(!st)return;
+  const parts=String(d.area||"").split(",").map(s=>s.trim()).filter(Boolean);
+  if(!parts.some(p=>p.toLowerCase()===st.toLowerCase()))parts.push(st);
+  d.area=parts.join(", ");
+}
 
 function tap(act,extra){
-  const d=today();
-  d.doors++;
-  if(act!=="none")d.answered++;
-  if(act==="no")d.no++;
-  if(act==="maybe")d.maybe++;
-  if(act==="yes"){d.yes++;d.booked+=Number(extra&&extra.price)||0}
-  if(!d.area)d.area=$("#area").value.trim();
-  saveToday(d);
-  undoStack.push({act,price:extra&&extra.price||0,leadId:extra&&extra.leadId||null});
-  const names={none:"No answer",no:"Talked, no",maybe:"Maybe saved",yes:"Sale booked"};
-  $("#last").textContent="Last: "+names[act];
+  const d=getDay();
+  d.doors=(Number(d.doors)||0)+1;
+  if(act!=="none")d.answered=(Number(d.answered)||0)+1;
+  if(act==="no")d.no=(Number(d.no)||0)+1;
+  if(act==="maybe")d.maybe=(Number(d.maybe)||0)+1;
+  const price=act==="yes"?(Number(extra&&extra.price)||0):0;
+  if(act==="yes"){d.yes=(Number(d.yes)||0)+1;d.booked=(Number(d.booked)||0)+price}
+  addArea(d); stamp(d); put(dayId(),d);
+  meta.undo=(meta.undo||[]).filter(u=>u.day===d.date).concat([{day:d.date,act,price,leadId:extra&&extra.leadId||null}]).slice(-30);
+  saveMeta();
+  $("#last").textContent="Last: "+NAMES[act]+" · "+new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
   render();
+  const el=$(act==="none"?"#k-doors":act==="yes"?"#k-sold":"#k-talk");
+  el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
 }
 function undo(){
-  const u=undoStack.pop(); if(!u){toast("Nothing to undo");return}
-  const d=today();
-  d.doors=Math.max(0,d.doors-1);
-  if(u.act!=="none")d.answered=Math.max(0,d.answered-1);
-  if(u.act==="no")d.no=Math.max(0,d.no-1);
-  if(u.act==="maybe")d.maybe=Math.max(0,d.maybe-1);
-  if(u.act==="yes"){d.yes=Math.max(0,d.yes-1);d.booked=Math.max(0,d.booked-(Number(u.price)||0))}
-  saveToday(d);
-  if(u.leadId&&docs[u.leadId])write(u.leadId,null);
-  $("#last").textContent="Undid last tap";
+  const list=(meta.undo||[]).filter(u=>u.day===todayKey());
+  const u=list.pop(); if(!u){toast("Nothing to undo today");return}
+  meta.undo=list; saveMeta();
+  const d=getDay();
+  d.doors=Math.max(0,(Number(d.doors)||0)-1);
+  if(u.act!=="none")d.answered=Math.max(0,(Number(d.answered)||0)-1);
+  if(u.act==="no")d.no=Math.max(0,(Number(d.no)||0)-1);
+  if(u.act==="maybe")d.maybe=Math.max(0,(Number(d.maybe)||0)-1);
+  if(u.act==="yes"){d.yes=Math.max(0,(Number(d.yes)||0)-1);d.booked=Math.max(0,(Number(d.booked)||0)-(Number(u.price)||0))}
+  if(!d.doors&&!Number(d.seconds)){d.firstAt=null;d.lastAt=null}
+  put(dayId(),d);
+  const removed=u.leadId&&docs[u.leadId];
+  if(removed)put(u.leadId,null);
+  $("#last").textContent="Undid: "+NAMES[u.act]+(removed?" (customer removed)":"");
   render();
 }
 
-/* ---------- lead sheet ---------- */
-function openLead(id,preset){
-  const L=id&&docs[id]?docs[id]:Object.assign({kind:"lead",name:"",address:"",phone:"",status:"follow",price:"",jobDate:"",followUp:"",notes:"",windows:"",createdAt:todayKey()},preset||{});
-  const isNew=!id;
-  const fromTap=preset&&preset._tap;
-  $("#sheet-body").innerHTML=`
-    <div class="row"><h2 class="grow">${fromTap==="yes"?"Book the sale":fromTap==="maybe"?"Save a follow-up":isNew?"New lead":"Edit lead"}</h2><button class="ghost" type="button" id="f-cancel">Cancel</button></div>
-    <label>Name<input id="f-name" value="${esc(L.name)}" autocomplete="off" placeholder="e.g. Mrs. Johnson"></label>
-    <label>Address<input id="f-address" value="${esc(L.address||$("#area").value)}" autocomplete="off" placeholder="House number and street"></label>
-    <div class="two">
-      <label>Phone<input id="f-phone" value="${esc(L.phone)}" inputmode="tel" autocomplete="off"></label>
-      <label>Status<select id="f-status">${STATUSES.map(([k,v])=>`<option value="${k}" ${L.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
-    </div>
-    <div class="two">
-      <label>Price ($)<input id="f-price" value="${esc(L.price)}" inputmode="decimal" placeholder="199"></label>
-      <label>Windows<input id="f-windows" value="${esc(L.windows)}" inputmode="numeric" placeholder="22"></label>
-    </div>
-    <div class="two">
-      <label>Job day<input id="f-job" type="date" value="${esc(L.jobDate)}"></label>
-      <label>Follow up on<input id="f-follow" type="date" value="${esc(L.followUp)}"></label>
-    </div>
-    <label>Notes<textarea id="f-notes" placeholder="Gate code, dog, screens, wants quarterly…">${esc(L.notes)}</textarea></label>
-    <button class="primary" type="button" id="f-save">${fromTap==="yes"?"Save sale":"Save"}</button>
-    ${!isNew?`<div id="del-area"><button class="danger" type="button" id="f-del">Delete lead</button></div>`:""}`;
-  $("#sheet").hidden=false;
-  setTimeout(()=>{const n=$("#f-name");n&&n.focus()},50);
-  $("#f-cancel").onclick=closeSheet;
-  $("#f-save").onclick=()=>{
-    const body={kind:"lead",createdAt:L.createdAt||todayKey(),
-      name:$("#f-name").value.trim(),address:$("#f-address").value.trim(),phone:$("#f-phone").value.trim(),
-      status:$("#f-status").value,price:$("#f-price").value.trim(),windows:$("#f-windows").value.trim(),
-      jobDate:$("#f-job").value,followUp:$("#f-follow").value,notes:$("#f-notes").value.trim()};
-    if(!body.name&&!body.address){toast("Add a name or an address");return}
-    const newId=id||("lead-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-    write(newId,body);
-    if(fromTap)tap(fromTap,{price:fromTap==="yes"?(Number(body.price)||0):0,leadId:newId});
-    closeSheet(); toast(fromTap==="yes"?"Sale booked":"Lead saved"); render();
-  };
-  const del=$("#f-del");
-  if(del)del.onclick=()=>{
-    $("#del-area").innerHTML=`<div class="row"><span class="grow" style="font-size:14px">Delete this lead for good?</span><button class="ghost" type="button" id="f-no">Keep</button><button class="danger" type="button" id="f-yes">Delete</button></div>`;
-    $("#f-no").onclick=()=>openLead(id);
-    $("#f-yes").onclick=()=>{write(id,null);closeSheet();toast("Lead deleted");render()};
-  };
+/* ---------- sheet plumbing ---------- */
+function openSheet(html,bind){const b=$("#sheet-body");b.innerHTML=html;$("#sheet").hidden=false;$("#sheet").scrollTop=0;if(bind)bind(b)}
+function closeSheet(){$("#sheet").hidden=true;$("#sheet-body").innerHTML="";if(pendingReload)location.reload()}
+function head(title,btn){return `<div class="sheet-head"><h2 class="grow">${title}</h2><button class="ghost" type="button" data-close>${btn||"Cancel"}</button></div>`}
+function chipGroup(name,opts,sel){
+  return `<div class="chips multi" role="group" data-group="${name}">`+opts.map(([v,l])=>`<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${String(v)===String(sel)}">${esc(l)}</button>`).join("")+`</div>`;
 }
-function closeSheet(){$("#sheet").hidden=true;$("#sheet-body").innerHTML=""}
+const picked=(root,g)=>{const c=root.querySelector(`[data-group="${g}"] .chip[aria-pressed="true"]`);return c?c.dataset.v:null};
+const val=(root,s)=>{const el=root.querySelector(s);return el?el.value.trim():""};
+
+function priceHTML(sel){
+  const n=Number(sel)||0, inChips=PRICES.includes(n);
+  const s=inChips?String(n):(n?"other":"");
+  return chipGroup("price",PRICES.map(p=>[String(p),"$"+p]).concat([["other","Other"]]),s)+
+    `<input id="f-other" inputmode="decimal" placeholder="Price in dollars" value="${s==="other"?n:""}" ${s==="other"?"":"hidden"}>`;
+}
+function bindPrice(root,onChange){
+  const g=root.querySelector('[data-group="price"]'),o=root.querySelector("#f-other");
+  g.addEventListener("pick",e=>{o.hidden=e.detail!=="other";if(!o.hidden)o.focus();if(onChange)onChange()});
+  o.addEventListener("input",()=>{if(onChange)onChange()});
+}
+function readPrice(root){
+  const v=picked(root,"price");
+  if(v==="other")return Number(String(root.querySelector("#f-other").value).replace(/[^\d.]/g,""))||0;
+  return Number(v)||0;
+}
+function setPrice(root,n){
+  const v=PRICES.includes(n)?String(n):"other",o=root.querySelector("#f-other");
+  root.querySelectorAll('[data-group="price"] .chip').forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.v===v)));
+  o.hidden=v!=="other"; if(v==="other")o.value=String(n);
+}
+function dateHTML(group,opts,sel,inputId){
+  const s=opts.some(o=>o[0]===sel)?sel:(sel?"other":"");
+  return chipGroup(group,opts.concat([["other","Other day"]]),s)+
+    `<input id="${inputId}" type="date" value="${s==="other"?esc(sel):""}" ${s==="other"?"":"hidden"}>`;
+}
+function bindDate(root,group,inputId){
+  const i=root.querySelector("#"+inputId);
+  root.querySelector(`[data-group="${group}"]`).addEventListener("pick",e=>{i.hidden=e.detail!=="other"});
+}
+function readDate(root,group,inputId){const v=picked(root,group);return v==="other"?(root.querySelector("#"+inputId).value||""):(v||"")}
+function jobDayOpts(){
+  const t=todayKey(),o=[[t,"Today"],[addDays(t,1),"Tomorrow"]];
+  for(let i=2;i<=8&&o.length<4;i++){const k=addDays(t,i);if(isWeekend(k))o.push([k,chipDay(k)])}
+  return o;
+}
+function followOpts(){
+  const t=todayKey(),o=[[addDays(t,1),"Tomorrow"],[addDays(t,3),"In 3 days"]],w=nextWeekend();
+  if(!o.some(x=>x[0]===w))o.push([w,chipDay(w)]);
+  o.push([addDays(t,7),"Next week"]);
+  return o;
+}
+
+/* ---------- texts ---------- */
+function smsHref(phone,body){return "sms:"+digits(phone)+"?&body="+encodeURIComponent(body)}
+function textFor(b){
+  const hi=b.name?"Hi "+b.name:"Hi there", p=Number(b.price)||0;
+  if(b.status==="booked")return `${hi}, it's ${BIZ}. You're booked for ${b.jobDate?dayWord(b.jobDate):"soon"}: every exterior window${p?" for "+money(p):""}. Just reply here if anything changes. Thanks!`;
+  if(b.status==="quarterly")return `${hi}, it's ${BIZ}. Your next quarterly window cleaning is ${b.jobDate?dayWord(b.jobDate):"coming up"}${p?" ("+money(p)+")":""}. Reply here if that day doesn't work. Thanks!`;
+  if(b.status==="follow")return `${hi}, it's ${BIZ}. We talked at your door about getting your windows done. We're back in your neighborhood ${dayWord(nextWeekend())}. Want me to put you down?${p?" It's "+money(p)+" for every window on the outside.":""}`;
+  if(b.status==="done")return thanksText(b);
+  return `${hi}, it's ${BIZ}.`;
+}
+function thanksText(b){
+  return `Thanks for having us${b.name?", "+b.name:""}! If you have a minute, a quick Google review helps us a lot. And for every neighbor you send our way who books, you get $25 off your next cleaning.`;
+}
+
+/* ---------- SOLD / Maybe quick sheet ---------- */
+// kind "yes" | "maybe". leadId set = booking an existing callback or a past customer.
+function saleSheet(kind,leadId){
+  const L=leadId?docs[leadId]:null, isYes=kind==="yes";
+  const lastPrice=Number(meta.lastPrice)||199;
+  const price=(L&&Number(L.price))||lastPrice;
+  const title=isYes?(L?"Book "+esc(L.name||L.address||"it"):"Book the sale"):"Save a callback";
+  openSheet(`${head(title)}
+    <label>Name<input id="f-name" value="${esc(L?L.name:"")}" autocomplete="off" autocapitalize="words" placeholder="e.g. Mrs. Johnson"></label>
+    ${L?`<label>Address<input id="f-address" value="${esc(L.address)}" autocomplete="off"></label>`
+       :`<div class="addr"><label>House #<input id="f-num" inputmode="numeric" autocomplete="off"></label><label>Street<input id="f-street" value="${esc($("#street").value.trim())}" autocomplete="off" autocapitalize="words"></label></div>`}
+    <label>Phone<input id="f-phone" type="tel" value="${esc(L?L.phone:"")}" autocomplete="off" placeholder="239-555-0123"></label>
+    <div class="field">${isYes?"Price":"Price quoted"}${priceHTML(price)}</div>
+    ${isYes?`<div class="field">Job day${dateHTML("day",jobDayOpts(),nextWeekend(),"f-day")}</div>
+      <div class="field">Plan${chipGroup("plan",[["booked","One time"],["quarterly","Quarterly"]],L&&L.status==="quarterly"?"quarterly":"booked")}<p class="hint" id="q-hint" hidden></p></div>`
+     :`<div class="field">Call back${dateHTML("fu",followOpts(),addDays(todayKey(),1),"f-fu")}</div>`}
+    <label>Notes (optional)<textarea id="f-notes" placeholder="Gate code, dog, screens, number of windows…">${esc(L?L.notes:"")}</textarea></label>
+    <button class="${isYes?"goodbtn":"primary"} big" type="button" id="f-save">${isYes?"Save sale":"Save callback"}</button>`,root=>{
+    let qBase=0;
+    function qhint(){
+      if(!isYes)return;
+      const h=root.querySelector("#q-hint"),q=picked(root,"plan")==="quarterly",p=readPrice(root);
+      if(qBase&&p!==Math.round(qBase*.85))qBase=0;
+      h.hidden=!q||!p; if(h.hidden)return;
+      if(qBase){h.textContent=`Quarterly price set: ${money(p)} per visit (15% off ${money(qBase)}).`;return}
+      h.innerHTML=`Quarterly is 15% off: <button type="button" class="linkbtn" id="q-apply">use ${money(Math.round(p*.85))} per visit</button>`;
+      root.querySelector("#q-apply").onclick=()=>{qBase=p;setPrice(root,Math.round(p*.85));qhint()};
+    }
+    bindPrice(root,qhint);
+    if(isYes){bindDate(root,"day","f-day");root.querySelector('[data-group="plan"]').addEventListener("pick",qhint);qhint()}
+    else bindDate(root,"fu","f-fu");
+    root.querySelector("#f-save").onclick=()=>{
+      const name=val(root,"#f-name"),phone=val(root,"#f-phone"),notes=val(root,"#f-notes");
+      const address=L?val(root,"#f-address"):(val(root,"#f-num")+" "+val(root,"#f-street")).trim();
+      if(!name&&!address&&!phone){toast("Add a name, address or phone");return}
+      const p=readPrice(root);
+      if(isYes){
+        if(!(p>0)){toast("Pick a price");return}
+        const day=readDate(root,"day","f-day"); if(!day){toast("Pick a job day");return}
+        const plan=picked(root,"plan")||"booked";
+        const id=leadId||newId();
+        const body=Object.assign({},L||{},{kind:"lead",name,address,phone,status:plan,price:String(p),jobDate:day,followUp:"",notes,
+          windows:(L&&L.windows)||"",createdAt:(L&&L.createdAt)||todayKey(),lastDone:(L&&L.lastDone)||"",credited:true});
+        let extra="";
+        if(L){
+          // A callback that turns into a sale counts toward the session where you first knocked it.
+          if(!L.credited&&L.status==="follow"&&L.createdAt&&docs[dayId(L.createdAt)]){
+            const d=getDay(L.createdAt); d.yes=(Number(d.yes)||0)+1; d.booked=(Number(d.booked)||0)+p; put(dayId(L.createdAt),d);
+            extra=" · added to "+fmtShort(L.createdAt)+" numbers";
+          }
+          put(id,body);
+        }else{put(id,body);tap("yes",{price:p,leadId:id})}
+        meta.lastPrice=qBase||p; saveMeta();      // remember the regular price, not the quarterly discount
+        closeSheet(); toast((plan==="quarterly"?"Quarterly customer":"Sale")+" booked for "+dayWord(day)+extra); render();
+      }else{
+        const fu=readDate(root,"fu","f-fu")||addDays(todayKey(),1);
+        const id=newId();
+        put(id,{kind:"lead",name,address,phone,status:"follow",price:p?String(p):"",jobDate:"",followUp:fu,notes,windows:"",createdAt:todayKey(),lastDone:""});
+        tap("maybe",{leadId:id});
+        closeSheet(); toast("Callback saved for "+dayWord(fu));
+      }
+    };
+  });
+}
+
+/* ---------- edit / add ---------- */
+function editSheet(id){
+  const isNew=!id;
+  const L=id?docs[id]:{kind:"lead",name:"",address:"",phone:"",status:"booked",price:"",jobDate:"",followUp:"",notes:"",windows:"",createdAt:todayKey(),lastDone:""};
+  openSheet(`${head(isNew?"Add customer":"Edit customer")}
+    <label>Name<input id="e-name" value="${esc(L.name)}" autocomplete="off" autocapitalize="words"></label>
+    <label>Address<input id="e-address" value="${esc(L.address)}" autocomplete="off" autocapitalize="words"></label>
+    <div class="two">
+      <label>Phone<input id="e-phone" type="tel" value="${esc(L.phone)}" autocomplete="off"></label>
+      <label>Status<select id="e-status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${L.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    </div>
+    <div class="two">
+      <label>Price ($)<input id="e-price" value="${esc(L.price)}" inputmode="decimal" placeholder="199"></label>
+      <label>Windows<input id="e-windows" value="${esc(L.windows)}" inputmode="numeric" placeholder="22"></label>
+    </div>
+    <div class="two">
+      <label>Job day<input id="e-job" type="date" value="${esc(L.jobDate)}"></label>
+      <label>Call back on<input id="e-follow" type="date" value="${esc(L.followUp)}"></label>
+    </div>
+    <label>Last done<input id="e-last" type="date" value="${esc(L.lastDone)}"></label>
+    <label>Notes<textarea id="e-notes" placeholder="Gate code, dog, screens, wants quarterly…">${esc(L.notes)}</textarea></label>
+    <button class="primary big" type="button" id="e-save">Save</button>
+    ${isNew?"":`<div id="del-area"><button class="danger" type="button" id="e-del">Delete customer</button></div>`}`,root=>{
+    root.querySelector("#e-save").onclick=()=>{
+      const body=Object.assign({},L,{kind:"lead",name:val(root,"#e-name"),address:val(root,"#e-address"),phone:val(root,"#e-phone"),
+        status:root.querySelector("#e-status").value,price:val(root,"#e-price").replace(/[^\d.]/g,""),windows:val(root,"#e-windows"),
+        jobDate:root.querySelector("#e-job").value,followUp:root.querySelector("#e-follow").value,lastDone:root.querySelector("#e-last").value,
+        notes:val(root,"#e-notes"),createdAt:L.createdAt||todayKey()});
+      if(!body.name&&!body.address&&!body.phone){toast("Add a name, address or phone");return}
+      put(id||newId(),body); closeSheet(); toast("Saved"); render();
+    };
+    const del=root.querySelector("#e-del");
+    if(del)del.onclick=()=>{
+      root.querySelector("#del-area").innerHTML=`<div class="row"><span class="grow" style="font-size:14px">Delete ${esc(L.name||"this customer")} for good?</span><button class="ghost" type="button" id="e-keep">Keep</button><button class="danger" type="button" id="e-yes">Delete</button></div>`;
+      root.querySelector("#e-keep").onclick=()=>editSheet(id);
+      root.querySelector("#e-yes").onclick=()=>{put(id,null);closeSheet();toast("Customer deleted");render()};
+    };
+  });
+}
+
+/* ---------- job done ---------- */
+function doneSheet(id){
+  const L=docs[id]; if(!L)return;
+  const t=todayKey(), next=addDays(t,91), p=Number(L.price)||0, qp=Math.round(p*.85), isQ=L.status==="quarterly";
+  openSheet(`${head("Job done?")}
+    <div class="card"><b>${esc(L.name||L.address)}</b><div class="meta">${esc(L.name?L.address:"")}${p?" · "+money(p):""}</div></div>
+    ${isQ?`<button class="goodbtn big" type="button" id="d-q">Done ✓<small>Next quarterly visit ${fmtShort(next)}</small></button>`
+         :`<button class="goodbtn big" type="button" id="d-start">Done ✓ + start quarterly<small>${qp?money(qp)+" per visit (15% off) · ":""}next visit ${fmtShort(next)}</small></button>
+           <button class="primary big" type="button" id="d-one">Done ✓ · one time</button>`}`,root=>{
+    const finish=body=>{put(id,body);render();thanks(body)};
+    const q=root.querySelector("#d-q"),s=root.querySelector("#d-start"),o=root.querySelector("#d-one");
+    if(q)q.onclick=()=>finish(Object.assign({},L,{lastDone:t,jobDate:next}));
+    if(s)s.onclick=()=>finish(Object.assign({},L,{status:"quarterly",lastDone:t,jobDate:next,price:qp?String(qp):L.price}));
+    if(o)o.onclick=()=>finish(Object.assign({},L,{status:"done",lastDone:t}));
+  });
+}
+function thanks(b){
+  openSheet(`${head("Marked done ✓","Close")}
+    <p class="hint">${b.status==="quarterly"?"Next visit is "+dayWord(b.jobDate)+". ":""}Now is the best time to ask for a review and referrals.</p>
+    ${b.phone?`<a class="primary big" href="${esc(smsHref(b.phone,thanksText(b)))}">Text thank-you + referral ask</a>`:`<p class="small">No phone saved, so ask in person.</p>`}
+    <p class="small">Then put the yard sign out for 5 days and knock 5 houses on each side.</p>
+    <button class="ghost big" type="button" data-close>Close</button>`);
+}
 
 /* ---------- render ---------- */
-function render(){
-  const d=today();
+function due(b,t){
+  if((b.status==="booked"||b.status==="quarterly")&&b.jobDate&&b.jobDate<=t)return true;
+  if(b.status==="follow"&&b.followUp&&b.followUp<=t)return true;
+  return false;
+}
+function render(){renderHeader();renderKnock();renderCustomers();renderNumbers()}
+
+function backupAge(){return meta.lastBackup?Math.floor((Date.now()-meta.lastBackup)/86400000):null}
+function renderHeader(){
+  const has=Object.keys(docs).length>0, age=backupAge(), pill=$("#backup-pill");
+  const stale=has&&(age===null||age>=7);
+  pill.textContent=!has?"Backup":age===null?"Back up!":age===0?"Backed up today":"Backup "+age+"d ago";
+  pill.classList.toggle("warn",stale);
+  const nag=$("#nag");
+  nag.hidden=!stale;
+  if(stale)nag.innerHTML=`<div class="nag"><span>${age===null?"You haven't backed up yet.":"Last backup was "+age+" days ago."}</span><button type="button" data-goto-backup>Back up</button></div>`;
+  const t=todayKey(), n=leads().filter(([,b])=>due(b,t)).length, badge=$("#badge");
+  badge.hidden=!n; badge.textContent=n;
+}
+function renderKnock(){
+  const d=getDay();
   $("#today-label").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
-  if(document.activeElement!==$("#area"))$("#area").value=d.area||"";
-  $("#s-doors").textContent=d.doors; $("#s-ans").textContent=d.answered; $("#s-yes").textContent=d.yes;
-  $("#s-rate").textContent=pct(d.yes,d.answered); $("#s-money").textContent=money(d.booked);
-  $("#s-ppd").textContent=money(d.doors?d.booked/d.doors:0)+" per door";
-  renderTimer(d);
-
-  // leads
-  const q=$("#search").value.trim().toLowerCase();
-  const leads=Object.entries(docs).filter(([,b])=>b&&b.kind==="lead");
-  const counts={all:leads.length}; STATUSES.forEach(([k])=>counts[k]=leads.filter(([,b])=>b.status===k).length);
-  $("#chips").innerHTML=[["all","All"],...STATUSES].map(([k,v])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${filter===k}">${v} ${counts[k]||0}</button>`).join("");
-  const tk=todayKey();
-  let list=leads.filter(([,b])=>(filter==="all"||b.status===filter)&&(!q||[b.name,b.address,b.notes,b.phone].join(" ").toLowerCase().includes(q)));
-  const sortKey=b=>b.status==="follow"?(b.followUp||"9999"):b.status==="booked"?(b.jobDate||"9999"):"z"+(b.createdAt||"");
-  list.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1])));
-  $("#leads").innerHTML=list.length?list.map(([id,b])=>{
-    const when=b.status==="follow"&&b.followUp?`<span class="${b.followUp<=tk?"due":""}">Follow up ${fmtDate(b.followUp)}${b.followUp<=tk?" (due)":""}</span>`:b.jobDate?`Job ${fmtDate(b.jobDate)}`:"";
-    return `<button class="lead" type="button" data-id="${id}">
-      <div class="top"><span class="name">${esc(b.name||b.address)}</span><span class="pill s-${b.status}">${SL[b.status]||b.status}</span></div>
-      <div class="meta">${[b.name?esc(b.address):"",b.phone?esc(b.phone):"",b.price?money(b.price):"",when].filter(Boolean).join(" · ")}</div>
-      ${b.notes?`<div class="meta">${esc(b.notes)}</div>`:""}</button>`}).join("")
-    :`<div class="empty">${leads.length?"No leads match.":"No leads yet. Tap <b>Maybe</b> or <b>Sold</b> on the Knock tab, or use + Add."}</div>`;
-
-  // stats
-  const days=Object.values(docs).filter(b=>b&&b.kind==="day").sort((a,b)=>b.date.localeCompare(a.date));
-  const T=days.reduce((t,x)=>({doors:t.doors+x.doors,ans:t.ans+x.answered,yes:t.yes+x.yes,booked:t.booked+x.booked,sec:t.sec+elapsed(x),tb:t.tb+(elapsed(x)?x.booked:0)}),{doors:0,ans:0,yes:0,booked:0,sec:0,tb:0});
-  $("#a-doors").textContent=T.doors; $("#a-yes").textContent=T.yes; $("#a-rate").textContent=pct(T.yes,T.ans);
-  $("#a-hr").textContent=T.sec>=600?money(T.tb/(T.sec/3600)):"–";
-  $("#a-money").textContent=money(T.booked);
-  $("#a-q").textContent=counts.quarterly+" on quarterly plans";
-  $("#log").innerHTML=days.length?days.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.area||"–")}</td><td>${elapsed(x)?(elapsed(x)/3600).toFixed(1):"–"}</td><td>${x.doors}</td><td>${x.answered}</td><td>${x.yes}</td><td>${pct(x.yes,x.answered)}</td><td>${money(x.booked)}</td></tr>`).join(""):`<tr><td colspan="8" class="empty" style="text-align:center">Your sessions show up here after your first tap.</td></tr>`;
+  $("#k-doors").textContent=d.doors||0; $("#k-talk").textContent=d.answered||0; $("#k-sold").textContent=d.yes||0;
+  $("#k-booked").textContent=money(d.booked);
+  $("#k-close").textContent=pct(d.yes,d.answered);
+  $("#k-ppd").textContent=perDoor(d.doors?d.booked/d.doors:0);
+  $("#k-time").textContent=fmtDur(secs(d));
 }
-function renderTimer(d){
-  const s=elapsed(d);
-  $("#timer").textContent=Math.floor(s/3600)+":"+String(Math.floor(s%3600/60)).padStart(2,"0");
-  $("#timer-btn").textContent=d.startedAt?"Stop timer":"Start timer";
-  if(d.startedAt&&!tick)tick=setInterval(()=>renderTimer(today()),15000);
-  if(!d.startedAt&&tick){clearInterval(tick);tick=null}
+
+const FILTERS=[["next","Up next"],["follow","Call back"],["done","Done"],["all","All"]];
+const inFilter={next:b=>b.status==="booked"||b.status==="quarterly",follow:b=>b.status==="follow",done:b=>b.status==="done",all:()=>true};
+function whenLine(b,t){
+  const late=k=>k<t, tag=(cls,txt)=>`<div class="when ${cls}">${txt}</div>`;
+  if(b.status==="booked"||b.status==="quarterly"){
+    if(!b.jobDate)return tag("","No job day set");
+    const every=b.status==="quarterly"?" · every 3 months":"";
+    if(late(b.jobDate))return tag("late","Overdue: was "+fmtShort(b.jobDate)+every);
+    if(b.jobDate===t)return tag("due","Job today"+every);
+    return tag("","Job "+dayWord(b.jobDate)+every);
+  }
+  if(b.status==="follow"){
+    if(!b.followUp)return tag("","Call back: no day set");
+    if(b.followUp<=t)return tag(late(b.followUp)?"late":"due","Call back "+(b.followUp===t?"today":"(was "+fmtShort(b.followUp)+")"));
+    return tag("","Call back "+dayWord(b.followUp));
+  }
+  if(b.status==="done")return b.lastDone?tag("","Done "+fmtShort(b.lastDone)):"";
+  return "";
 }
+function renderCustomers(){
+  const t=todayKey(), q=$("#search").value.trim().toLowerCase(), all=leads();
+  $("#cfilter").innerHTML=FILTERS.map(([k,l])=>{
+    const n=all.filter(([,b])=>inFilter[k](b)).length;
+    const d=k==="all"?0:all.filter(([,b])=>inFilter[k](b)&&due(b,t)).length;
+    return `<button class="chip" type="button" data-f="${k}" aria-pressed="${filter===k}">${l} ${n}${d?` <span class="dot">${d}</span>`:""}</button>`;
+  }).join("");
+  const list=all.filter(([,b])=>inFilter[filter](b)&&(!q||[b.name,b.address,b.phone,b.notes].join(" ").toLowerCase().includes(q)));
+  const key={next:b=>b.jobDate||"9999",follow:b=>b.followUp||"9999",done:b=>b.lastDone||"",all:b=>(b.name||b.address||"").toLowerCase()}[filter];
+  list.sort((a,b)=>key(a[1]).localeCompare(key(b[1])));
+  if(filter==="done")list.reverse();
+  if(!list.length){
+    const msg=q?"No customers match that search.":
+      filter==="next"?"No jobs booked yet. Tap <b>SOLD</b> on the Knock tab when you close one.":
+      filter==="follow"?"No callbacks. Tap <b>Maybe</b> on the Knock tab to save one.":
+      filter==="done"?"Finished jobs show up here.":"No customers yet.";
+    $("#clist").innerHTML=`<div class="empty">${msg}</div>`; return;
+  }
+  $("#clist").innerHTML=list.map(([id,b])=>{
+    const p=Number(b.price)||0, ph=digits(b.phone);
+    const main=b.status==="booked"||b.status==="quarterly"?`<button class="act go" type="button" data-done="${id}">Done ✓</button>`:
+      b.status==="follow"?`<button class="act go" type="button" data-sell="${id}">Sold ✓</button>`:
+      b.status==="done"?`<button class="act" type="button" data-sell="${id}">Rebook</button>`:`<span class="act off">–</span>`;
+    return `<article class="cust${due(b,t)?" isdue":""}">
+      <div class="top"><span class="name">${esc(b.name||b.address||b.phone)}</span><span class="pill s-${esc(b.status)}">${esc(STATUS[b.status]||b.status)}</span></div>
+      <div class="meta">${[b.name?esc(b.address):"",p?money(p):"",b.windows?esc(b.windows)+" windows":""].filter(Boolean).join(" · ")}</div>
+      ${whenLine(b,t)}
+      ${b.notes?`<div class="meta">${esc(b.notes)}</div>`:""}
+      <div class="acts">
+        ${ph?`<a class="act" href="tel:${esc(ph)}">Call</a><a class="act" href="${esc(smsHref(ph,textFor(b)))}">Text</a>`:`<span class="act off">Call</span><span class="act off">Text</span>`}
+        ${main}
+        <button class="act" type="button" data-edit="${id}">Edit</button>
+      </div></article>`;
+  }).join("");
+}
+
+function periodDays(p){
+  const t=todayKey(), all=days();
+  if(p==="today")return all.filter(d=>d.date===t);
+  if(p==="week"){const start=addDays(t,-((dow(t)+6)%7));return all.filter(d=>d.date>=start&&d.date<=t)}
+  return all;
+}
+function totals(list){
+  return list.reduce((T,d)=>{const s=secs(d),b=Number(d.booked)||0;
+    T.doors+=Number(d.doors)||0;T.talk+=Number(d.answered)||0;T.yes+=Number(d.yes)||0;T.booked+=b;T.sec+=s;if(s>0)T.timed+=b;return T},
+    {doors:0,talk:0,yes:0,booked:0,sec:0,timed:0});
+}
+function renderNumbers(){
+  $("#period").querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",String(c.dataset.p===period)));
+  const T=totals(periodDays(period));
+  $("#n-doors").textContent=T.doors; $("#n-sold").textContent=T.yes; $("#n-close").textContent=pct(T.yes,T.talk);
+  $("#n-booked").textContent=money(T.booked); $("#n-ppd").textContent=perDoor(T.doors?T.booked/T.doors:0);
+  $("#n-hr").textContent=T.sec>=600?money(T.timed/(T.sec/3600)):"–";
+  $("#n-note").textContent=`${T.talk} talked · ${fmtDur(T.sec)} knocking${period==="week"?" · since Monday":""}. Close = sold ÷ talked.`;
+  const A=totals(days()), rate=A.talk?A.yes/A.talk:0, tip=$("#n-tip");
+  tip.hidden=!(A.talk>=30&&rate>=0.2);
+  if(!tip.hidden)tip.textContent=`You're closing ${Math.round(rate*100)}% of people you talk to, over 1 in 5. Time to test $219+.`;
+
+  const t=todayKey(), wk=addDays(t,6), L=leads().map(([,b])=>b);
+  const jobs=L.filter(b=>b.status==="booked"||b.status==="quarterly");
+  const soon=jobs.filter(b=>b.jobDate&&b.jobDate>=t&&b.jobDate<=wk), late=jobs.filter(b=>b.jobDate&&b.jobDate<t);
+  const quarterly=L.filter(b=>b.status==="quarterly"), qSum=quarterly.reduce((s,b)=>s+(Number(b.price)||0),0);
+  const calls=L.filter(b=>b.status==="follow"), callsDue=calls.filter(b=>b.followUp&&b.followUp<=t);
+  const sum=a=>money(a.reduce((s,b)=>s+(Number(b.price)||0),0));
+  $("#pipe").innerHTML=
+    `<div><span>Jobs next 7 days</span><b>${soon.length} · ${sum(soon)}</b></div>`+
+    (late.length?`<div><span style="color:var(--bad)">Overdue jobs</span><b>${late.length} · ${sum(late)}</b></div>`:"")+
+    `<div><span>Quarterly customers</span><b>${quarterly.length} · ${money(qSum)}/round</b></div>`+
+    `<div><span>Quarterly per year</span><b>${money(qSum*4)}</b></div>`+
+    `<div><span>Open callbacks</span><b>${calls.length}${callsDue.length?" · "+callsDue.length+" due":""}</b></div>`;
+
+  const hist=days().filter(d=>(Number(d.doors)||0)>0||(Number(d.booked)||0)>0).sort((a,b)=>b.date.localeCompare(a.date));
+  $("#sessions").innerHTML=hist.length?hist.map(d=>{const s=secs(d),dr=Number(d.doors)||0,b=Number(d.booked)||0;
+    return `<div class="sess"><div class="top"><b>${fmtShort(d.date)}</b><span class="amt">${money(b)}</span></div>
+      <div class="meta">${d.area?esc(d.area)+" · ":""}${s?fmtDur(s)+" · ":""}${dr} doors · ${d.answered||0} talked · ${d.yes||0} sold · ${pct(d.yes,d.answered)} · ${perDoor(dr?b/dr:0)}/door</div></div>`}).join("")
+    :`<div class="empty">Your sessions show up here after your first tap.</div>`;
+
+  const age=backupAge(), nl=leads().length, nd=days().length;
+  $("#backup-info").textContent=`Your data lives only on this phone (${nl} customer${nl===1?"":"s"}, ${nd} session${nd===1?"":"s"}). `+
+    (age===null?"You haven't backed up yet. ":"Last backup: "+(age===0?"today":age+" day"+(age===1?"":"s")+" ago")+". ")+
+    "Once a week, copy a backup and paste it into a note. To restore, paste a backup below.";
+  $("#foot").textContent=`Salt Off Doors v${VERSION} · `+(navigator.serviceWorker&&navigator.serviceWorker.controller?"works offline":"open once more on Wi-Fi to finish offline setup");
+}
+
+/* ---------- toast ---------- */
 let toastT=null;
-function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1800)}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2400)}
 
-/* ---------- wire up ---------- */
-document.querySelectorAll(".tap").forEach(b=>b.addEventListener("click",()=>{
-  const a=b.dataset.act;
-  if(a==="yes")openLead(null,{_tap:"yes",status:"booked",price:"199"});
-  else if(a==="maybe")openLead(null,{_tap:"maybe",status:"follow"});
-  else tap(a);
-}));
-$("#undo").onclick=undo;
-$("#timer-btn").onclick=()=>{const d=today();if(d.startedAt){d.seconds=elapsed(d);d.startedAt=null}else{d.startedAt=Date.now()}if(!d.area)d.area=$("#area").value.trim();saveToday(d);render()};
-let areaT=null;
-$("#area").addEventListener("input",()=>{clearTimeout(areaT);areaT=setTimeout(()=>{const d=today();d.area=$("#area").value.trim();saveToday(d)},700)});
-$("#add-lead").onclick=()=>openLead(null);
-$("#search").addEventListener("input",render);
-$("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){filter=c.dataset.f;render()}});
-$("#leads").addEventListener("click",e=>{const l=e.target.closest(".lead");if(l)openLead(l.dataset.id)});
-$("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet()});
-document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
-  document.querySelectorAll("nav.tabs button").forEach(x=>x.removeAttribute("aria-current"));
-  b.setAttribute("aria-current","page");
-  ["knock","leads","stats"].forEach(v=>$("#v-"+v).hidden=v!==b.dataset.view);
+/* ---------- navigation ---------- */
+function show(v){
+  view=v;
+  document.querySelectorAll("nav.tabs button").forEach(b=>{if(b.dataset.view===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  ["knock","customers","numbers"].forEach(x=>$("#v-"+x).hidden=x!==v);
   window.scrollTo(0,0); render();
-}));
+}
+function gotoBackup(){show("numbers");setTimeout(()=>$("#backup-card").scrollIntoView({behavior:"smooth",block:"start"}),60)}
 
 /* ---------- backup ---------- */
-function backupText(){return "SALTOFF-BACKUP "+JSON.stringify(docs)}
+const backupText=()=>"SALTOFF-BACKUP "+JSON.stringify(docs);
+function backedUp(msg){meta.lastBackup=Date.now();saveMeta();const m=$("#backup-msg");m.hidden=false;m.textContent=msg;render()}
+function fallbackCopy(t){
+  const box=$("#restore-box"); box.value=t; box.focus(); box.select();
+  let ok=false; try{ok=document.execCommand("copy")}catch(e){}
+  if(ok){box.value="";backedUp("Copied. Paste it into a note in Notes.")}
+  else{const m=$("#backup-msg");m.hidden=false;m.textContent="Select all the text in the box below and copy it into a note."}
+}
 $("#copy-backup").onclick=()=>{
   const t=backupText();
-  const done=()=>{$("#backup-msg").textContent="Copied. Paste it into a note.";};
-  try{navigator.clipboard.writeText(t).then(done,()=>{$("#restore-box").value=t;$("#restore-box").select();$("#backup-msg").textContent="Select all and copy the text below.";});}
-  catch(e){$("#restore-box").value=t;$("#restore-box").select();$("#backup-msg").textContent="Select all and copy the text below.";}
+  try{navigator.clipboard.writeText(t).then(()=>backedUp("Copied. Paste it into a note in Notes."),()=>fallbackCopy(t))}
+  catch(e){fallbackCopy(t)}
 };
-$("#backup-btn").onclick=()=>{document.querySelector('nav.tabs button[data-view="stats"]').click();setTimeout(()=>$("#backup-card").scrollIntoView({behavior:"smooth"}),50)};
+if(navigator.share){
+  $("#share-backup").hidden=false;
+  $("#share-backup").onclick=()=>{navigator.share({title:"Salt Off backup "+todayKey(),text:backupText()}).then(()=>backedUp("Shared. Make sure it saved in Notes."),()=>{})};
+}
+function resetRestore(){
+  $("#restore-area").innerHTML='<button class="ghost" type="button" id="restore-btn">Restore from backup</button>';
+  $("#restore-btn").onclick=onRestore;
+}
 function onRestore(){
   const raw=$("#restore-box").value.trim().replace(/^SALTOFF-BACKUP\s*/,"");
   let data; try{data=JSON.parse(raw)}catch(e){toast("That isn't a valid backup");return}
   if(!data||typeof data!=="object"||Array.isArray(data)){toast("That isn't a valid backup");return}
-  $("#restore-area").innerHTML='<div class="row"><span class="grow" style="font-size:14px">Replace everything on this phone with this backup?</span><button class="ghost" type="button" id="r-no">Cancel</button><button class="danger" type="button" id="r-yes">Replace</button></div>';
+  const vals=Object.values(data), nl=vals.filter(b=>b&&b.kind==="lead").length, nd=vals.filter(b=>b&&b.kind==="day").length;
+  if(!nl&&!nd){toast("That backup has no customers or sessions in it");return}
+  $("#restore-area").innerHTML=`<div class="row"><span class="grow" style="font-size:14px">Replace everything on this phone with this backup (${nl} customer${nl===1?"":"s"}, ${nd} session${nd===1?"":"s"})?</span><button class="ghost" type="button" id="r-no">Cancel</button><button class="danger" type="button" id="r-yes">Replace</button></div>`;
   $("#r-no").onclick=resetRestore;
-  $("#r-yes").onclick=()=>{docs=data;saveLocal();resetRestore();$("#restore-box").value="";render();toast("Backup restored")};
+  $("#r-yes").onclick=()=>{docs=data;persist();meta.undo=[];saveMeta();resetRestore();$("#restore-box").value="";render();toast("Backup restored")};
 }
-function resetRestore(){$("#restore-area").innerHTML='<button class="ghost" type="button" id="restore-btn">Restore from backup</button>';$("#restore-btn").onclick=onRestore}
-$("#restore-btn").onclick=onRestore;
-docs=loadLocal(); render();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+
+/* ---------- wire up ---------- */
+document.querySelectorAll(".tap[data-act]").forEach(b=>b.addEventListener("click",()=>{
+  const a=b.dataset.act;
+  if(a==="yes"||a==="maybe")saleSheet(a);
+  else tap(a);
+}));
+$("#undo").onclick=undo;
+$("#street").addEventListener("input",()=>{meta.street=$("#street").value;meta.streetDay=todayKey();saveMeta()});
+$("#add").onclick=()=>editSheet(null);
+$("#search").addEventListener("input",renderCustomers);
+$("#cfilter").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){filter=c.dataset.f;renderCustomers()}});
+$("#clist").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  if(b.dataset.done)doneSheet(b.dataset.done);
+  else if(b.dataset.sell)saleSheet("yes",b.dataset.sell);
+  else if(b.dataset.edit)editSheet(b.dataset.edit);
+});
+$("#period").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){period=c.dataset.p;renderNumbers()}});
+$("#backup-pill").onclick=gotoBackup;
+$("#nag").addEventListener("click",e=>{if(e.target.closest("[data-goto-backup]"))gotoBackup()});
+$("#sheet").addEventListener("click",e=>{
+  if(e.target.closest("[data-close]")){closeSheet();return}
+  const c=e.target.closest("[data-group] .chip");
+  if(c){const g=c.parentElement;g.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",String(x===c)));g.dispatchEvent(new CustomEvent("pick",{detail:c.dataset.v}))}
+});
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+
+load();
+if(meta.streetDay===todayKey()&&meta.street)$("#street").value=meta.street;
+resetRestore();
+render();
+
+if("serviceWorker" in navigator){
+  // When a new version installs, reload once so it shows right away (waits if a form is open).
+  const hadController=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(!hadController){renderNumbers();return}
+    if($("#sheet").hidden)location.reload(); else pendingReload=true;
+  });
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
 })();
 </script>
-
 </body>
 </html>
