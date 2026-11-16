@@ -1,7 +1,7 @@
 /* Blue Tide door app v6. Local-first: everything lives in localStorage; cloud.js syncs on top when set up. */
 (function(){
 "use strict";
-const VERSION="6.0.2";
+const VERSION="6.0.3";
 const KEY="saltoff-v6", V5="saltoff-v5", OLD="saltoff-tracker-v1", OLDMETA="saltoff-meta-v1";
 
 const SERVICES_DEFAULT=[{id:"windows",name:"Windows",price:199},{id:"cage",name:"Pool cage",price:350},{id:"both",name:"Windows + cage",price:525},{id:"other",name:"Other",price:0}];
@@ -26,7 +26,17 @@ const TPL_DEFAULT={
 };
 const NOTIF_DEFAULT={enabled:false,types:{knock30:true,knockStart:true,lateStart:true,confirm:true,followups:true,thin:true,plan:true,streak:true,collect:true},
   times:{confirm:"18:00",followups:"15:30",thin:"17:00",plan:"18:00",streak:"20:00",collect:"16:00"},quiet:{from:"21:00",to:"07:00"},school:{on:true,from:"07:30",to:"15:00"}};
-const DEFAULT_SETTINGS={appName:"Blue Tide",me:"Surj",business:"Blue Tide Exterior Cleaning",brand:"",accent:"",
+const THEMES=[
+  {id:"bluetide",name:"Blue Tide",b:"#0b3a5b",a:"#139bb0"},{id:"ocean",name:"Ocean",b:"#0a2a66",a:"#2f80ed"},
+  {id:"lagoon",name:"Lagoon",b:"#04454a",a:"#12b5a5"},{id:"midnight",name:"Midnight",b:"#14162b",a:"#7c6cf2"},
+  {id:"graphite",name:"Graphite",b:"#1f2429",a:"#f59e0b"},{id:"forest",name:"Forest",b:"#133d2a",a:"#2fa36b"},
+  {id:"palm",name:"Palm",b:"#1d3b1e",a:"#8bc34a"},{id:"sunset",name:"Sunset",b:"#4a1d2e",a:"#f26b3a"},
+  {id:"coral",name:"Coral",b:"#0f3a40",a:"#ff6b5b"},{id:"crimson",name:"Crimson",b:"#3d0d16",a:"#e0344f"},
+  {id:"royal",name:"Royal",b:"#261a55",a:"#8b5cf6"},{id:"lavender",name:"Lavender",b:"#3b2f5e",a:"#c084fc"},
+  {id:"gold",name:"Gold",b:"#1a1712",a:"#d4a017"},{id:"rose",name:"Rose",b:"#4a1832",a:"#ec4899"},
+  {id:"steel",name:"Steel",b:"#1e2b3a",a:"#64a6d8"}];
+const THEME_DEFAULT={preset:"bluetide",brand:"#0b3a5b",accent:"#139bb0",mode:"auto"};
+const DEFAULT_SETTINGS={appName:"Blue Tide",theme:THEME_DEFAULT,me:"Surj",business:"Blue Tide Exterior Cleaning",brand:"",accent:"",
   weeklyGoal:1000,goalType:"revenue",defaultPrice:199,slots:["09:00","11:30","14:00","15:30"],zelle:"",review:"",idleMin:30,
   minDoors:15,thinJobs:3,helperPay:0,supplies:5,showScriptsOnStart:true,saveNoAnswers:true,useLocation:true,
   services:SERVICES_DEFAULT,scripts:SCRIPTS_DEFAULT,tpl:TPL_DEFAULT,notif:NOTIF_DEFAULT};
@@ -97,6 +107,8 @@ function normalize(){
   if(!Array.isArray(S.settings.services)||!S.settings.services.length)S.settings.services=clone(SERVICES_DEFAULT);
   if(!Array.isArray(S.settings.scripts)||!S.settings.scripts.length)S.settings.scripts=clone(SCRIPTS_DEFAULT);
   if(!Array.isArray(S.settings.slots)||!S.settings.slots.length)S.settings.slots=clone(DEFAULT_SETTINGS.slots);
+  if(!st.theme&&(st.brand||st.accent))S.settings.theme={preset:"custom",brand:st.brand||THEME_DEFAULT.brand,accent:st.accent||THEME_DEFAULT.accent,mode:"auto"};
+  S.settings.theme=Object.assign(clone(THEME_DEFAULT),S.settings.theme||{});delete S.settings.brand;delete S.settings.accent;
   S.meta=Object.assign({lastBackup:0,street:"",undo:[],records:{},planDismiss:{},snaps:[],locAsked:false,stateUpdatedAt:0,sync:{}},S.meta||{});
   if(!Array.isArray(S.meta.undo))S.meta.undo=[];
   for(const s of Object.values(S.sessions)){if(!Array.isArray(s.intervals))s.intervals=[]}
@@ -177,7 +189,7 @@ function fill(tpl,c,j){
 let toastT=null,recordToastAt=0;
 function toast(msg,undoFn,minor){if(minor&&Date.now()-recordToastAt<2500)return;const t=$("#toast");t.innerHTML=`<span>${esc(msg)}</span>`+(undoFn?`<button type="button" id="t-undo">Undo</button>`:"");t.hidden=false;clearTimeout(toastT);if(undoFn)$("#t-undo").onclick=()=>{undoFn();t.hidden=true;render()};toastT=setTimeout(()=>t.hidden=true,undoFn?4500:2000)}
 const reduced=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-function celebrate(){if(reduced())return;const box=$("#confetti");box.innerHTML="";const cols=["#139bb0","#1e8a4c","#f0a83a","#ffffff","#0b3a5b"];
+function celebrate(){if(reduced())return;const box=$("#confetti");box.innerHTML="";const cols=[getComputedStyle(document.documentElement).getPropertyValue("--teal").trim()||"#139bb0","#1e8a4c","#f0a83a","#ffffff","#0b3a5b"];
   for(let i=0;i<60;i++){const e=document.createElement("i");e.style.left=Math.random()*100+"%";e.style.background=cols[i%cols.length];e.style.setProperty("--dx",(Math.random()*160-80)+"px");e.style.setProperty("--r",(Math.random()*720-360)+"deg");e.style.animationDelay=(Math.random()*.3)+"s";box.appendChild(e)}
   setTimeout(()=>box.innerHTML="",2200)}
 function flash(el){if(!el||reduced())return;el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash")}
@@ -753,14 +765,13 @@ function settingsSheet(open){
       <div class="two"><div><div class="lbl">Quiet from</div><input class="f" id="nq-from" type="time" value="${N.quiet.from}"></div><div><div class="lbl">Quiet until</div><input class="f" id="nq-to" type="time" value="${N.quiet.to}"></div></div>
       ${tog("ns-on","No alerts during school (weekdays)",N.school.on)}
       <div class="two"><div><div class="lbl">School from</div><input class="f" id="ns-from" type="time" value="${N.school.from}"></div><div><div class="lbl">School until</div><input class="f" id="ns-to" type="time" value="${N.school.to}"></div></div>`)}
-    ${sec("profile","Name & brand",`
+    ${sec("theme","Theme",themeHTML())}
+    ${sec("profile","Name & business",`
       <div class="lbl">App name</div><input class="f" id="st-app" value="${esc(s.appName)}">
       <div class="lbl">Business name</div><input class="f" id="st-biz" value="${esc(s.business)}">
       <div class="lbl">Your first name (used in texts)</div><input class="f" id="st-me" value="${esc(s.me)}">
       <div class="lbl">Zelle phone or email</div><input class="f" id="st-zelle" value="${esc(s.zelle)}">
-      <div class="lbl">Google review link</div><input class="f" id="st-review" value="${esc(s.review)}">
-      <div class="two"><div><div class="lbl">Brand color</div><input class="f" id="st-brand" type="color" value="${s.brand||"#0b3a5b"}" style="height:48px;padding:4px"></div><div><div class="lbl">Accent color</div><input class="f" id="st-accent" type="color" value="${s.accent||"#139bb0"}" style="height:48px;padding:4px"></div></div>
-      <button class="btn sm" type="button" id="st-colorreset">Reset colors</button>`)}
+      <div class="lbl">Google review link</div><input class="f" id="st-review" value="${esc(s.review)}">`)}
     ${sec("goals","Goals & rules",`
       <div class="two"><div><div class="lbl">Weekly goal $</div><input class="f" id="st-goal" inputmode="numeric" value="${s.weeklyGoal}"></div><div><div class="lbl">Goal counts</div>${chips("st-goaltype",[{v:"revenue",l:"Revenue"},{v:"profit",l:"Profit"}],s.goalType)}</div></div>
       <div class="three"><div><div class="lbl">Min doors / session</div><input class="f" id="st-mind" inputmode="numeric" value="${s.minDoors}"></div><div><div class="lbl">Thin calendar if &lt;</div><input class="f" id="st-thin" inputmode="numeric" value="${s.thinJobs}"></div><div><div class="lbl">Timer stops after (min)</div><input class="f" id="st-idle" inputmode="numeric" value="${s.idleMin}"></div></div>
@@ -783,7 +794,7 @@ function settingsSheet(open){
     <div class="muted small" style="text-align:center">${esc(s.appName)} app v${VERSION}</div>`,()=>{
       wire("st-goaltype");
       if(window.Cloud&&window.Cloud.wirePanels)window.Cloud.wirePanels();
-      $("#st-colorreset").onclick=()=>{s.brand="";s.accent="";applyBrand();save();settingsSheet("profile")};
+      wireTheme();
       $("#svc-add").onclick=()=>{collect();s.services.push({id:uid("svc"),name:"New service",price:0});save();settingsSheet("services")};
       document.querySelectorAll("[data-svcrm]").forEach(b=>b.onclick=()=>{collect();if(s.services.length<=1){toast("Keep at least one service");return}s.services.splice(Number(b.dataset.svcrm),1);save();settingsSheet("services")});
       $("#scr-add").onclick=()=>{collect();s.scripts.push({t:"New card",x:""});save();settingsSheet("scripts")};
@@ -791,7 +802,6 @@ function settingsSheet(open){
       document.querySelectorAll("[data-scrrm]").forEach(b=>b.onclick=()=>{collect();s.scripts.splice(Number(b.dataset.scrrm),1);save();settingsSheet("scripts")});
       function collect(){
         s.appName=val("st-app")||"Blue Tide";s.business=val("st-biz");s.me=val("st-me");s.zelle=val("st-zelle");s.review=val("st-review");
-        const br=val("st-brand"),ac=val("st-accent");if(br&&br.toLowerCase()!=="#0b3a5b")s.brand=br;if(ac&&ac.toLowerCase()!=="#139bb0")s.accent=ac;
         s.weeklyGoal=num(val("st-goal"))||1000;s.goalType=picked("st-goaltype")||"revenue";s.minDoors=Math.max(1,num(val("st-mind"))||15);s.thinJobs=Math.max(0,num(val("st-thin")));s.idleMin=Math.max(5,num(val("st-idle"))||30);
         s.helperPay=num(val("st-help"));s.supplies=num(val("st-sup"));
         const sl=val("st-slots").split(/[,;]+/).map(parseTime).filter(Boolean);if(sl.length)s.slots=[...new Set(sl)].sort();
@@ -824,11 +834,58 @@ function parseBackup(raw){
   }catch(e){S=keep;return null}
 }
 function parseTime(x){x=String(x).trim().toLowerCase();const m=x.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/);if(!m)return null;let h=+m[1],mi=+(m[2]||0);const ap=m[3];if(ap){if(ap[0]==="p"&&h<12)h+=12;if(ap[0]==="a"&&h===12)h=0}else if(h<7)h+=12;if(h>23||mi>59)return null;return pad(h)+":"+pad(mi)}
+/* ================= THEMES =================
+   A theme is two colors: the main color (header, cards, selected chips) and the accent (buttons, highlights).
+   Everything else (background, lines, text) is tinted from them, and colors are nudged darker or lighter
+   when needed so white text on buttons and the header always stays readable. */
+const hexRgb=h=>{h=String(h||"").replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");const n=parseInt(h,16);return isNaN(n)?[0,0,0]:[n>>16&255,n>>8&255,n&255]};
+const rgbHex=c=>"#"+c.map(x=>Math.round(Math.max(0,Math.min(255,x))).toString(16).padStart(2,"0")).join("");
+const mixC=(a,b,t)=>{const x=hexRgb(a),y=hexRgb(b);return rgbHex(x.map((v,i)=>v+(y[i]-v)*t))};
+const lum=h=>{const c=hexRgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]};
+const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+const towards=(c,goal,against,ratio)=>{let x=c;for(let i=0;i<30&&contrast(x,against)<ratio;i++)x=mixC(x,goal,.06);return x};
+function hue(h){const [r,g,b]=hexRgb(h).map(v=>v/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,l=(mx+mn)/2;
+  if(!d)return [0,0,l];const s=d/(1-Math.abs(2*l-1));let H=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;return [(H*60+360)%360,s,l]}
+function hsl(H,s,l){const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((H/60)%2-1)),m=l-c/2;const [r,g,b]=H<60?[c,x,0]:H<120?[x,c,0]:H<180?[0,c,x]:H<240?[0,x,c]:H<300?[x,0,c]:[c,0,x];return rgbHex([r,g,b].map(v=>(v+m)*255))}
+function themeVars(brand,accent,dark){
+  const [H,sat]=hue(brand),Sa=Math.min(sat,.8),v={};
+  if(!dark){Object.assign(v,{bg:hsl(H,Sa*.42,.95),card:"#ffffff",soft:hsl(H,Sa*.32,.97),line:hsl(H,Sa*.32,.89),muted:hsl(H,Sa*.2,.43),ink:hsl(H,Sa*.8,.13)});
+    v.muted=towards(v.muted,"#000000","#ffffff",4.6);v.navy=towards(brand,"#000000","#ffffff",4.5);v.navy2=mixC(v.navy,"#ffffff",.1);
+    v.teal=towards(accent,"#000000","#ffffff",3);v.tealSoft=mixC(accent,"#ffffff",.86)}
+  else{Object.assign(v,{bg:hsl(H,Sa*.6,.07),card:hsl(H,Sa*.5,.12),soft:hsl(H,Sa*.5,.09),line:hsl(H,Sa*.45,.19),muted:hsl(H,Sa*.22,.64),ink:hsl(H,Sa*.4,.94)});
+    v.muted=towards(v.muted,"#ffffff",v.card,4.6);v.navy=towards(brand,"#000000","#ffffff",4.5);v.navy2=mixC(v.navy,"#ffffff",.08);
+    v.teal=towards(accent,"#ffffff",v.card,4.5);v.tealSoft=mixC(accent,v.card,.8)}
+  v.tealFill=towards(accent,"#000000","#ffffff",4.5);
+  return v;
+}
+let darkMQ=null;
+function themeMode(){const m=S.settings.theme.mode;if(m==="light"||m==="dark")return m;return darkMQ&&darkMQ.matches?"dark":"light"}
 function applyBrand(){
-  const s=S.settings,r=document.documentElement.style;
-  if(s.brand)r.setProperty("--navy",s.brand);else r.removeProperty("--navy");
-  if(s.accent){r.setProperty("--teal",s.accent);r.setProperty("--teal-fill",s.accent)}else{r.removeProperty("--teal");r.removeProperty("--teal-fill")}
+  if(!darkMQ&&window.matchMedia){darkMQ=matchMedia("(prefers-color-scheme: dark)");try{darkMQ.addEventListener("change",applyBrand)}catch(e){}}
+  const s=S.settings,t=s.theme,root=document.documentElement,r=root.style,mode=themeMode();
+  root.dataset.mode=mode;
+  const keys=["bg","card","soft","line","muted","ink","navy","navy2","teal","tealSoft","tealFill"],css=k=>"--"+k.replace(/[A-Z]/g,c=>"-"+c.toLowerCase());
+  if(t.preset==="bluetide")keys.forEach(k=>r.removeProperty(css(k)));
+  else{const v=themeVars(t.brand,t.accent,mode==="dark");keys.forEach(k=>r.setProperty(css(k),v[k]))}
+  const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute("content",getComputedStyle(root).getPropertyValue("--navy").trim()||"#0b3a5b");
   $("#hdr-name").textContent=(s.appName||"Blue Tide").toUpperCase();document.title=s.appName||"Blue Tide";
+}
+function themeHTML(){
+  const t=S.settings.theme;
+  return `${chips("th-mode",[{v:"auto",l:"Match iPhone"},{v:"light",l:"Light"},{v:"dark",l:"Dark"}],t.mode)}
+    <div class="themes" id="th-grid">${THEMES.map(x=>`<button type="button" class="th" data-th="${x.id}" aria-pressed="${t.preset===x.id}" aria-label="${x.name} theme"><i style="background:linear-gradient(135deg,${x.b},${mixC(x.b,"#ffffff",.18)});--a:${x.a}"></i>${x.name}</button>`).join("")}</div>
+    <div class="lbl">Custom colors${t.preset==="custom"?" (in use)":""}</div>
+    <div class="two"><div><div class="lbl">Main</div><input class="f swatch" id="th-brand" type="color" value="${t.brand}"></div><div><div class="lbl">Accent</div><input class="f swatch" id="th-accent" type="color" value="${t.accent}"></div></div>
+    <div class="muted small">Tap a theme to try it. Colors adjust a little if needed so text stays easy to read.</div>`;
+}
+function wireTheme(){
+  const t=S.settings.theme,grid=$("#th-grid");if(!grid)return;
+  const mark=()=>{grid.querySelectorAll(".th").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.th===t.preset)));const l=$("#sec-theme .lbl");if(l)l.textContent="Custom colors"+(t.preset==="custom"?" (in use)":"")};
+  wire("th-mode",v=>{t.mode=v;applyBrand();save()});
+  grid.addEventListener("click",e=>{const b=e.target.closest(".th");if(!b)return;const x=THEMES.find(y=>y.id===b.dataset.th);if(!x)return;
+    Object.assign(t,{preset:x.id,brand:x.b,accent:x.a});$("#th-brand").value=x.b;$("#th-accent").value=x.a;applyBrand();mark();save()});
+  const custom=()=>{Object.assign(t,{preset:"custom",brand:$("#th-brand").value,accent:$("#th-accent").value});applyBrand();mark()};
+  ["th-brand","th-accent"].forEach(id=>{const e=document.getElementById(id);e.addEventListener("input",custom);e.addEventListener("change",()=>{custom();save()})});
 }
 
 /* ================= RENDER: TODAY ================= */
