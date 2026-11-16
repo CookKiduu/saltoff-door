@@ -1,7 +1,7 @@
 /* Blue Tide door app v6. Local-first: everything lives in localStorage; cloud.js syncs on top when set up. */
 (function(){
 "use strict";
-const VERSION="6.0";
+const VERSION="6.0.1";
 const KEY="saltoff-v6", V5="saltoff-v5", OLD="saltoff-tracker-v1", OLDMETA="saltoff-meta-v1";
 
 const SERVICES_DEFAULT=[{id:"windows",name:"Windows",price:199},{id:"cage",name:"Pool cage",price:350},{id:"both",name:"Windows + cage",price:525},{id:"other",name:"Other",price:0}];
@@ -309,12 +309,19 @@ function idleCheck(){
   for(const s of Object.values(S.sessions)){
     const o=openInt(s);if(!o)continue;
     const last=s.lastTap||o.s,lim=(S.settings.idleMin||30)*60e3;
-    if(Date.now()-last>lim||s.date!==today()){o.e=Math.max(o.s,last+2*60e3);ch=true}
+    if(Date.now()-last>lim||s.date!==today()){o.e=Math.max(o.s,last+2*60e3);o.auto=true;ch=true}
   }
   if(ch){stopGeo();save()}
+  return ch;
 }
 function mins(s){if(s.manualMin!=null)return s.manualMin;let ms=0;for(const i of s.intervals||[])ms+=((i.e||Date.now())-i.s);return ms/60e3}
 const timed=s=>s.manualMin!=null||(s.intervals&&s.intervals.length>0);
+const hhmm=ts=>{const d=new Date(ts),h=d.getHours();return ((h+11)%12+1)+":"+pad(d.getMinutes())+(h>=12?" pm":" am")};
+/* Stopwatch text: 4:07 (min:sec) or 1:04:07 (hr:min:sec) */
+const watch=ms=>{const t=Math.max(0,Math.floor(ms/1000)),h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return h?`${h}:${pad(m)}:${pad(x)}`:`${m}:${pad(x)}`};
+/* "4:02 pm – 5:10 pm", or "Started 4:02 pm" while running */
+function span(s){const iv=(s.intervals||[]).filter(i=>i&&i.s);if(!iv.length)return"";const a=iv[0].s,last=iv[iv.length-1];
+  return last.e?`${hhmm(a)} – ${hhmm(last.e)}${iv.length>1?` (${iv.length} parts)`:""}`:`Started ${hhmm(a)}`}
 const knocking=()=>{const s=S.sessions[today()];return !!(s&&openInt(s))};
 function startKnock(skipAsk){
   if(!skipAsk&&S.settings.useLocation&&!S.meta.locAsked&&navigator.geolocation)return locationSheet();
@@ -556,17 +563,32 @@ function custSheet(cid){
 /* ================= SESSION edit ================= */
 function sessSheet(k){
   const s=S.sessions[k];if(!s)return;
+  const iv=(s.intervals||[]).filter(i=>i&&i.s),running=!!openInt(s);
+  const tOf=ts=>{const d=new Date(ts);return pad(d.getHours())+":"+pad(d.getMinutes())};
+  const st0=iv.length?tOf(iv[0].s):"",en0=iv.length&&iv[iv.length-1].e?tOf(iv[iv.length-1].e):"";
   openSheet(`<div class="ph"><h2>${esc(fmtDay(k))} session</h2><button type="button" data-close>Close</button></div>
     <input class="f" id="s-area" placeholder="Street or area" value="${esc(s.area||"")}">
     <div class="two"><div><div class="lbl">Doors</div><input class="f" id="s-doors" inputmode="numeric" value="${s.doors}"></div><div><div class="lbl">Talked</div><input class="f" id="s-ans" inputmode="numeric" value="${s.answered}"></div></div>
     <div class="two"><div><div class="lbl">Sold</div><input class="f" id="s-yes" inputmode="numeric" value="${s.yes}"></div><div><div class="lbl">Booked $</div><input class="f" id="s-booked" inputmode="decimal" value="${Math.round(s.booked)}"></div></div>
-    <div class="lbl">Minutes knocking</div><input class="f" id="s-min" inputmode="numeric" placeholder="${timed(s)?Math.round(mins(s)):"Not timed"}" value="${s.manualMin!=null?Math.round(s.manualMin):""}">
-    <div class="muted small">Leave blank to use the timer. Type a number to fix a wrong time.</div>
+    <div class="two"><div><div class="lbl">Started</div><input class="f" id="s-start" type="time" value="${st0}"></div><div><div class="lbl">Ended</div><input class="f" id="s-end" type="time" value="${en0}"></div></div>
+    <div class="muted small" id="s-len">${timed(s)?"Time knocking: "+hm(mins(s)):"Not timed. Add a start and end time."}${running?" (still running)":""}</div>
     <button class="btn full" type="button" id="s-recap">See recap</button>
     <button class="save teal" type="button" id="s-save">Save</button>
     <div id="s-del"><button class="btn bad full" type="button" id="s-delete">Delete session</button></div>`,()=>{
       $("#s-recap").onclick=()=>recapSheet(k);
-      $("#s-save").onclick=()=>{const n=x=>Math.max(0,Number(val(x))||0);Object.assign(s,{area:val("s-area"),doors:n("s-doors"),answered:n("s-ans"),yes:n("s-yes"),booked:n("s-booked")});const m=val("s-min");s.manualMin=m===""?null:Math.max(0,Number(m)||0);checkRecords(true);save();closeSheet();render();toast("Saved")};
+      const showLen=()=>{const a=val("s-start"),b=val("s-end");if(a&&b){const d=(atTime(k,b)-atTime(k,a))/60e3;$("#s-len").textContent=d>0?"Time knocking: "+hm(d):"The end time has to be after the start time."}};
+      $("#s-start").addEventListener("input",showLen);$("#s-end").addEventListener("input",showLen);
+      $("#s-save").onclick=()=>{
+        const a=val("s-start"),b=val("s-end");
+        if(a!==st0||b!==en0){
+          if(!a){toast("Add the start time");return}
+          const st=atTime(k,a);
+          if(b){const en=atTime(k,b);if(en<=st){toast("The end time has to be after the start time");return}s.intervals=[{s:st,e:en}]}
+          else if(running&&k===today()){s.intervals=[{s:st,e:null}]}
+          else{toast("Add the end time");return}
+          s.manualMin=null;
+        }
+        const n=x=>Math.max(0,Number(val(x))||0);Object.assign(s,{area:val("s-area"),doors:n("s-doors"),answered:n("s-ans"),yes:n("s-yes"),booked:n("s-booked")});checkRecords(true);save();closeSheet();render();toast("Saved")};
       $("#s-delete").onclick=()=>{$("#s-del").innerHTML=`<div class="two"><button class="btn" type="button" id="sk">Keep</button><button class="btn bad" type="button" id="sx">Delete</button></div>`;$("#sk").onclick=()=>sessSheet(k);$("#sx").onclick=()=>{delete S.sessions[k];checkRecords(true);save();closeSheet();render();toast("Deleted")}};
     });
 }
@@ -590,7 +612,7 @@ function recapSheet(k){
   const planned=planSessions(weekStart(k)).filter(p=>p.day===k);const ps=planned[0]?sessionStatus(planned[0]):null;
   const sk=streaks();
   openSheet(`<div class="ph"><h2>Session recap</h2><button type="button" data-close>Done</button></div>
-    <div class="recap-hero"><div class="muted small">${esc(fmtDayLong(k))}${s.area?" · "+esc(s.area):""}</div><div class="big">${money(s.booked)}</div><div class="muted">booked${timed(s)&&m>=1?" in "+hm(m):""}</div></div>
+    <div class="recap-hero"><div class="muted small">${esc(fmtDayLong(k))}${s.area?" · "+esc(s.area):""}</div><div class="big">${money(s.booked)}</div><div class="muted">booked${timed(s)&&m>=1?" in "+hm(m):""}</div>${span(s)?`<div class="muted small">${esc(span(s))}</div>`:""}</div>
     ${broke.map(x=>`<div class="recbadge">🏆 New record: ${esc(REC_NAMES[x])} (${recFmt(x,nowRec[x].v)})</div>`).join("")}
     <div class="card"><div class="ks"><div><b class="big">${s.doors}</b><span>Doors</span></div><div><b class="big">${s.answered}</b><span>Talked</span></div><div><b class="big">${s.yes}</b><span>Sold</span></div><div><b class="big">${pct(s.yes,s.answered)}</b><span>Close</span></div></div></div>
     <div class="card">
@@ -602,7 +624,8 @@ function recapSheet(k){
       <div class="kv"><span>Streak</span><b>${sk.sess} session${sk.sess===1?"":"s"} · ${sk.week} week${sk.week===1?"":"s"}</b></div>
     </div>
     <div class="tip"><b>Next time:</b> ${esc(tip)}</div>
-    <button class="save navy" type="button" data-close>Nice. Close recap</button>`);
+    <button class="save navy" type="button" data-close>Nice. Close recap</button>
+    <button class="btn full" type="button" data-editsess="${k}">Fix numbers or times</button>`);
   if(broke.length)celebrate();
 }
 /* ================= LOCATION explainer ================= */
@@ -802,7 +825,7 @@ function renderToday(){
   if(showPlanPrompt)html+=`<div class="card"><div class="between"><div><h3>${planWs===nxt?"Next week":"This week"}</h3><b style="font-size:17px">Plan your knock sessions</b></div><span style="font-size:28px">🗓️</span></div><div class="muted small">Pick 2–3 times to knock. The app reminds you and tracks your streak.</div><div class="acts"><button class="btn pri" type="button" data-plan="${planWs}">Plan my week</button><button class="btn" type="button" data-plandismiss="${planWs}">Not now</button></div></div>`;
   // mission
   const ko=knocking();
-  if(ko){const ss=S.sessions[t];html+=`<div class="card mission"><h3>Knocking now</h3><div class="mrow"><div><b class="big">${ss.doors}</b><span>Doors</span></div><div><b class="big">${ss.yes}</b><span>Sold</span></div><div><b class="big">${money(ss.booked)}</b><span>Booked</span></div></div><div class="acts"><button class="btn go" type="button" data-tab="knock">Back to knocking</button></div></div>`}
+  if(ko){const ss=S.sessions[t];html+=`<div class="card mission"><div class="between"><h3>Knocking now · ${esc(span(ss))}</h3><b class="clock" data-clock="run">${watch(mins(ss)*60e3)}</b></div><div class="mrow"><div><b class="big">${ss.doors}</b><span>Doors</span></div><div><b class="big">${ss.yes}</b><span>Sold</span></div><div><b class="big">${money(ss.booked)}</b><span>Booked</span></div></div><div class="acts"><button class="btn go" type="button" data-tab="knock">Back to knocking</button></div></div>`}
   else{
     const when=np?`${np.day===t?"Today":fmtDay(np.day)} at ${fmtTime(np.start)}`:"";
     html+=`<div class="card mission"><div class="between"><h3>Today's mission</h3>${np&&np.status==="now"?`<span class="st now">Now</span>`:""}</div>
@@ -860,7 +883,7 @@ function renderKnock(){
   const rp=retryPins().length;
   $("#v-knock").innerHTML=`
     ${g.remaining>0?`<div class="calc"><span>🎯</span><span class="grow">${money(g.remaining)} to go = <b>${g.jobs}</b> job${g.jobs===1?"":"s"} ≈ <b>${g.doors}</b> doors (~${g.hours<1?Math.round(g.hours*60)+" min":g.hours.toFixed(1)+" hr"})</span></div>`:`<div class="calc"><span>✅</span><span>Weekly goal covered. Every sale now is extra.</span></div>`}
-    <div class="card timer"><div><div class="small muted"><span class="dot ${on?"on":""}"></span>${on?"Knocking now":"Timer stopped"}${on&&freshFix()?" · GPS on":""}</div><div class="big clock">${Math.floor(m/60)}:${pad(Math.floor(m%60))}</div></div>
+    <div class="card timer"><div><div class="small muted"><span class="dot ${on?"on":""}"></span>${on?esc(span(s)):timed(s)&&s.manualMin==null?esc(span(s))+((s.intervals[s.intervals.length-1]||{}).auto?" · stopped itself (no taps)":""):"Not started"}${on&&freshFix()?" · GPS on":""}</div><div class="big clock" data-clock="${on?"run":""}">${watch(m*60e3)}</div></div>
       ${on?`<button class="btn" type="button" data-act="stop">Stop</button>`:`<button class="btn pri" type="button" data-act="start">Start knocking</button>`}</div>
     <input class="street" id="street" placeholder="Street or area (optional)" value="${esc(s.area||S.meta.street||"")}" autocomplete="off" enterkeyhint="done">
     <div class="card"><div class="ks">
@@ -931,7 +954,7 @@ function renderMoney(){
       <div class="kv"><span>Time knocking</span><b>${K.min?hm(K.min):"not timed"}</b></div><div class="kv"><span>Per hour</span><b>${K.min>=10?money(K.tb/(K.min/60)):"–"}</b></div>
     </div>
     <div class="card"><h3>Quarterly customers</h3><div class="kv"><span>On the plan</span><b>${quarterly.length}</b></div><div class="kv"><span>Worth per year</span><b>${money(qYear)}</b></div></div>
-    <div class="card" style="padding:4px 14px"><div style="padding:10px 0 4px"><h3>Sessions</h3></div>${hist.length?hist.map(s=>`<button type="button" class="item" data-sess="${s.date}"><span class="grow"><span class="nm">${esc(fmtDay(s.date))}${s.area?" · "+esc(s.area):""}</span><span class="sub">${s.doors} doors · ${s.answered} talked · ${s.yes} sold · ${pct(s.yes,s.answered)} · ${timed(s)?Math.round(mins(s))+" min":"not timed"}</span></span><span class="amt" style="color:var(--good)">${money(s.booked)}</span></button>`).join(""):`<div class="empty">Your knocking sessions show up here.</div>`}</div>
+    <div class="card" style="padding:4px 14px"><div style="padding:10px 0 4px"><h3>Sessions</h3></div>${hist.length?hist.map(s=>`<button type="button" class="item" data-sess="${s.date}"><span class="grow"><span class="nm">${esc(fmtDay(s.date))}${s.area?" · "+esc(s.area):""}</span><span class="sub">${s.doors} doors · ${s.answered} talked · ${s.yes} sold · ${pct(s.yes,s.answered)} · ${timed(s)?(s.manualMin==null&&span(s)?span(s)+" · ":"")+hm(mins(s)):"not timed"}</span></span><span class="amt" style="color:var(--good)">${money(s.booked)}</span></button>`).join(""):`<div class="empty">Your knocking sessions show up here.</div>`}</div>
     <div class="muted small" style="text-align:center">Tap a session for its recap, or to fix its numbers.</div>`;
 }
 /* ================= RENDER: MAP ================= */
@@ -1021,7 +1044,7 @@ function route(){
 /* ================= events ================= */
 document.addEventListener("click",e=>{
   const a=e.target.closest("a[data-log]");if(a){if(a.classList.contains("off")){e.preventDefault();toast("Add a phone number first");return}onContact(a);return}
-  const el=e.target.closest("[data-tab],[data-act],[data-tap],[data-done],[data-paid],[data-job],[data-cust],[data-lost],[data-noreview],[data-sess],[data-range],[data-f],[data-close],[data-plan],[data-plandismiss],[data-retry],[data-mapout],[data-maprange],[data-pinout],[data-pindel],[data-pinsold]");
+  const el=e.target.closest("[data-tab],[data-act],[data-tap],[data-done],[data-paid],[data-job],[data-cust],[data-lost],[data-noreview],[data-sess],[data-range],[data-f],[data-close],[data-plan],[data-plandismiss],[data-retry],[data-mapout],[data-maprange],[data-pinout],[data-pindel],[data-pinsold],[data-editsess]");
   if(!el)return;const d=el.dataset;
   if("close" in d){closeSheet();return}
   if(d.tab){closeSheet();show(d.tab);return}
@@ -1045,6 +1068,7 @@ document.addEventListener("click",e=>{
   if(d.job)return jobSheet(d.job);
   if(d.cust){if(map)map.closePopup();return custSheet(d.cust)}
   if(d.sess)return recapSheet(d.sess);
+  if(d.editsess)return sessSheet(d.editsess);
   if(d.pinout){const p=S.pins[d.pin];if(p){p.out=d.pinout;save();renderMap();toast("Pin updated")}return}
   if(d.pindel){delete S.pins[d.pindel];save();if(map)map.closePopup();renderMap();toast("Pin deleted");return}
   if(d.pinsold){const p=S.pins[d.pinsold];if(map)map.closePopup();bookSheet({fromTap:true,address:p&&p.address||"",retryPin:d.pinsold});return}
@@ -1059,7 +1083,8 @@ $("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet()})
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&$("#sheet").hidden)render()});
 window.addEventListener("hashchange",route);
 window.addEventListener("online",()=>{if(tab==="map")renderMap()});
-setInterval(()=>{if(tab==="knock"&&$("#sheet").hidden&&document.activeElement&&document.activeElement.id!=="street")renderKnock()},20000);
+setInterval(()=>{const stopped=idleCheck();if(stopped&&$("#sheet").hidden){render();return}if(tab==="knock"&&$("#sheet").hidden&&document.activeElement&&document.activeElement.id!=="street")renderKnock()},20000);
+setInterval(()=>{if(document.hidden)return;const els=document.querySelectorAll('[data-clock="run"]');if(!els.length)return;const s=S.sessions[today()];if(!s||!openInt(s))return;const t=watch(mins(s)*60e3);els.forEach(e=>{if(e.textContent!==t)e.textContent=t})},1000);
 setInterval(()=>{if(knocking()&&S.settings.useLocation)startGeo()},60000);
 
 /* ================= reminders (used by cloud sync for push notifications) ================= */

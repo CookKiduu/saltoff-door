@@ -127,6 +127,8 @@ h3{margin:0;font-size:13px;font-weight:800;color:var(--muted);text-transform:upp
 .ks span{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .timer{flex-direction:row!important;align-items:center;justify-content:space-between}
 .timer .clock{font-size:30px}
+.clock{font-family:var(--num);font-variant-numeric:tabular-nums}
+.mission b.clock{font-size:20px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--gray);display:inline-block;margin-right:6px}
 .dot.on{background:var(--good);box-shadow:0 0 0 4px var(--good-soft);animation:pulse 1.6s ease infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 7px transparent}}
