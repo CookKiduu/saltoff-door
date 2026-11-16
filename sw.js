@@ -1,7 +1,7 @@
 /* Blue Tide service worker: offline app shell + push notifications.
    Bump VERSION on every update. Phones download the new files in the background,
    then the app shows "New version ready, Reload" instead of reloading on its own. */
-const VERSION = "bluetide-v6.0.1";
+const VERSION = "bluetide-v6.0.2";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./app.js", "./cloud.js", "./firebase-config.js", "./manifest.json",
   "./icon-180.png", "./icon-192.png", "./icon-512.png"

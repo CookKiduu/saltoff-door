@@ -1,7 +1,7 @@
 /* Blue Tide door app v6. Local-first: everything lives in localStorage; cloud.js syncs on top when set up. */
 (function(){
 "use strict";
-const VERSION="6.0.1";
+const VERSION="6.0.2";
 const KEY="saltoff-v6", V5="saltoff-v5", OLD="saltoff-tracker-v1", OLDMETA="saltoff-meta-v1";
 
 const SERVICES_DEFAULT=[{id:"windows",name:"Windows",price:199},{id:"cage",name:"Pool cage",price:350},{id:"both",name:"Windows + cage",price:525},{id:"other",name:"Other",price:0}];
@@ -101,6 +101,23 @@ function normalize(){
   if(!Array.isArray(S.meta.undo))S.meta.undo=[];
   for(const s of Object.values(S.sessions)){if(!Array.isArray(s.intervals))s.intervals=[]}
   for(const j of Object.values(S.jobs)){if(!j.service)j.service="windows"}
+  if(S.meta.weeks!=="sun")fixPlanWeeks();
+}
+/* Weeks used to start Monday, so on a Sunday "this week" meant the week that was ending.
+   Sessions added for a day that had already passed get moved to that day next week,
+   then every plan is filed under its Sunday. */
+function fixPlanWeeks(){
+  const all=[];
+  for(const p of Object.values(S.plans)){if(!p||typeof p!=="object")continue;
+    for(const ps of (Array.isArray(p.sessions)?p.sessions:[])){
+      const made=parseInt(String(ps.id||"").slice(3,11),36);
+      const end=atTime(ps.day,ps.start)+(ps.mins||120)*60e3;
+      if(made>1.7e12&&made<Date.now()+864e5&&made>end)ps.day=addDays(ps.day,7);
+      all.push({ps,goal:p.goal,doorsGoal:p.doorsGoal});
+    }}
+  const plans={};
+  for(const {ps,goal,doorsGoal} of all){const w=weekStart(ps.day);const q=plans[w]=plans[w]||{weekStart:w,goal,doorsGoal,sessions:[]};q.sessions.push(ps)}
+  S.plans=plans;S.meta.weeks="sun";
 }
 function weeklySnapshot(){
   const ws=weekStart(today());if(S.meta.lastSnapWeek===ws)return;
@@ -122,7 +139,7 @@ const toDate=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)
 const addDays=(k,n)=>{const x=toDate(k);x.setDate(x.getDate()+n);return dk(x)};
 const dateToTs=k=>{try{return toDate(k).getTime()+12*3600e3}catch(e){return Date.now()}};
 const atTime=(k,t)=>{const x=toDate(k);const [h,m]=(t||"00:00").split(":").map(Number);x.setHours(h,m,0,0);return x.getTime()};
-const weekStart=k=>{const d=toDate(k);const n=(d.getDay()+6)%7;d.setDate(d.getDate()-n);return dk(d)};
+const weekStart=k=>{const d=toDate(k);d.setDate(d.getDate()-d.getDay());return dk(d)};
 const fmtDay=k=>{if(!k)return"No date";const t=today();if(k===t)return"Today";if(k===addDays(t,1))return"Tomorrow";if(k===addDays(t,-1))return"Yesterday";return toDate(k).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})};
 const fmtDayLong=k=>k?toDate(k).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
 const dow=k=>toDate(k).toLocaleDateString("en-US",{weekday:"short"});
@@ -684,10 +701,11 @@ function resolveAddresses(list){
 /* ================= PLAN WEEK ================= */
 function planSheet(wsArg){
   const t=today(),cur=weekStart(t),nxt=addDays(cur,7);
-  let ws=wsArg||((toDate(t).getDay()===0||toDate(t).getDay()===6)&&!S.plans[nxt]?nxt:cur);
+  let ws=wsArg||(toDate(t).getDay()===6?nxt:cur);
   const draw=()=>{
     const p=S.plans[ws]||{weekStart:ws,goal:S.settings.weeklyGoal,doorsGoal:0,sessions:[]};
-    const days=[...Array(7)].map((_,i)=>addDays(ws,i));
+    const days=[...Array(7)].map((_,i)=>addDays(ws,i)).filter(d=>d>=t);
+    const firstDay=days.find(d=>d>t||new Date().getHours()<15)||days[days.length-1];
     const g=goalMath();
     const sugDoors=p.doorsGoal||Math.max(40,Math.ceil((Number(p.goal)||g.goal)/g.r.job/(g.r.answer*g.r.close)));
     openSheet(`<div class="ph"><h2>Plan your week</h2><button type="button" data-close>Close</button></div>
@@ -697,7 +715,7 @@ function planSheet(wsArg){
       <div class="muted small">At your numbers, ${money(Number(p.goal)||g.goal)} takes about ${Math.ceil((Number(p.goal)||g.goal)/g.r.job)} jobs ≈ ${Math.ceil(Math.ceil((Number(p.goal)||g.goal)/g.r.job)/(g.r.answer*g.r.close))} doors.</div>
       <h3>Knock sessions</h3>
       <div class="card" style="padding:4px 14px"><div class="plist">${planSessions(ws).length?planSessions(ws).map(ps=>`<div class="pitem"><span class="grow"><span class="when">${esc(dow(ps.day))} ${esc(toDate(ps.day).getDate())} · ${esc(fmtTime(ps.start))}</span> <span class="muted small">· ${ps.mins} min</span></span><span class="st ${sessionStatus(ps)}">${sessionStatus(ps)}</span><button class="btn sm bad" type="button" data-plrm="${ps.id}">✕</button></div>`).join(""):`<div class="empty" style="padding:14px">No sessions yet. Add 2–3 below.</div>`}</div></div>
-      <div class="lbl">Add a session · day</div>${chips("pl-day",days.map(d=>({v:d,l:dow(d)+" "+toDate(d).getDate()})),days.find(d=>d>=t&&toDate(d).getDay()!==0)||days[0])}
+      <div class="lbl">Add a session · day</div>${chips("pl-day",days.map(d=>({v:d,l:d===t?"Today":dow(d)+" "+toDate(d).getDate()})),firstDay)}
       <div class="lbl">Start</div>${chips("pl-start",[{v:"15:30",l:"3:30 pm"},{v:"16:30",l:"4:30 pm"},{v:"17:00",l:"5 pm"},{v:"10:00",l:"10 am"},{v:"13:00",l:"1 pm"},{v:"other",l:"Other"}],"15:30")}
       <input class="f" id="pl-start-o" type="time" hidden>
       <div class="lbl">Length</div>${chips("pl-len",[{v:"60",l:"1 hr"},{v:"90",l:"1.5 hr"},{v:"120",l:"2 hr"},{v:"180",l:"3 hr"}],"120")}
@@ -706,7 +724,9 @@ function planSheet(wsArg){
         wire("pl-week",v=>{keep();ws=v;draw()});wire("pl-day");wire("pl-start",v=>{$("#pl-start-o").hidden=v!=="other"});wire("pl-len");
         function keep(){const q=S.plans[ws]||{weekStart:ws,sessions:[]};q.goal=num(val("pl-goal"))||S.settings.weeklyGoal;q.doorsGoal=num(val("pl-doors"));if(!Array.isArray(q.sessions))q.sessions=[];S.plans[ws]=q}
         $("#pl-add").onclick=()=>{keep();let st=picked("pl-start");if(st==="other")st=val("pl-start-o");if(!st){toast("Pick a start time");return}
-          S.plans[ws].sessions.push({id:uid("ps"),day:picked("pl-day"),start:st,mins:Number(picked("pl-len"))||120});save();draw()};
+          const day=picked("pl-day"),len=Number(picked("pl-len"))||120;
+          if(atTime(day,st)+len*60e3<=Date.now()){toast("That time has already passed. Pick a later day or time.");return}
+          S.plans[ws].sessions.push({id:uid("ps"),day,start:st,mins:len});save();draw()};
         document.querySelectorAll("[data-plrm]").forEach(b=>b.onclick=()=>{keep();S.plans[ws].sessions=S.plans[ws].sessions.filter(x=>x.id!==b.dataset.plrm);save();draw()});
         $("#pl-save").onclick=()=>{keep();S.plans[ws].updated=Date.now();save();closeSheet();render();const n=planSessions(ws).length;toast(n?`Plan saved: ${n} session${n===1?"":"s"}`:"Plan saved")};
       });
@@ -818,9 +838,8 @@ function renderToday(){
   const e=Math.min(100,g.earned/g.goal*100),b=Math.min(100,(g.earned+g.upcoming)/g.goal*100);
   const np=nextPlanned(),sk=streaks();
   const d=toDate(t),hr=new Date().getHours();
-  const showPlanPrompt=((d.getDay()===0&&hr>=16)||d.getDay()===6)&&!planSessions(nxt).length&&!S.meta.planDismiss[nxt]
-    ||(!planSessions(cur).length&&!S.meta.planDismiss[cur]&&d.getDay()>=1&&d.getDay()<=4);
-  const planWs=((d.getDay()===0&&hr>=16)||d.getDay()===6)&&!planSessions(nxt).length?nxt:cur;
+  const planWs=d.getDay()===6?nxt:cur;
+  const showPlanPrompt=!planSessions(planWs).length&&!S.meta.planDismiss[planWs]&&d.getDay()!==5;
   let html=`${window.__updateReady?`<div class="update"><span>New version ready.</span><button class="btn pri sm" type="button" data-act="reload">Reload</button></div>`:""}`;
   if(showPlanPrompt)html+=`<div class="card"><div class="between"><div><h3>${planWs===nxt?"Next week":"This week"}</h3><b style="font-size:17px">Plan your knock sessions</b></div><span style="font-size:28px">🗓️</span></div><div class="muted small">Pick 2–3 times to knock. The app reminds you and tracks your streak.</div><div class="acts"><button class="btn pri" type="button" data-plan="${planWs}">Plan my week</button><button class="btn" type="button" data-plandismiss="${planWs}">Not now</button></div></div>`;
   // mission
@@ -864,8 +883,8 @@ function renderToday(){
   </div>`;
   // thin calendar
   const dw=d.getDay();
-  if(dw>=3||dw===0){const nws=nxt;const nwe=addDays(nws,6);const n=Object.values(S.jobs).filter(j=>j.status==="scheduled"&&j.date>=nws&&j.date<=nwe).length;
-    if(n<(s.thinJobs||0))html+=`<div class="warnbox"><span><b>Next week's thin:</b> ${n} job${n===1?"":"s"} booked. Knock to fill it.</span><button class="btn sm" type="button" data-plan="${dw===0?nxt:cur}">Plan a session</button></div>`}
+  if(dw>=3){const nws=nxt;const nwe=addDays(nws,6);const n=Object.values(S.jobs).filter(j=>j.status==="scheduled"&&j.date>=nws&&j.date<=nwe).length;
+    if(n<(s.thinJobs||0))html+=`<div class="warnbox"><span><b>Next week's thin:</b> ${n} job${n===1?"":"s"} booked. Knock to fill it.</span><button class="btn sm" type="button" data-plan="${dw===6?nxt:cur}">Plan a session</button></div>`}
   // next 7 days
   const upcoming=Object.values(S.jobs).filter(j=>j.status==="scheduled"&&j.date>t&&j.date<=addDays(t,7)).sort((a,b)=>(a.date+(a.time||"99")).localeCompare(b.date+(b.time||"99")));
   html+=`<div class="card"><div class="between"><h3>Next 7 days</h3><span class="muted small">${upcoming.length} job${upcoming.length===1?"":"s"} · ${money(upcoming.reduce((a,j)=>a+(j.price||0),0))}</span></div>`;
@@ -1121,7 +1140,7 @@ function computeReminders(){
     const fus=Object.values(S.customers).filter(c=>c.status==="lead"&&c.followUp&&(i===0?c.followUp<=day:c.followUp===day));
     if(fus.length)add("followups",day,atTime(day,N.times.followups),`${fus.length} follow-up${fus.length>1?"s":""} due`,fus.slice(0,3).map(c=>first(c.name)).join(", ")+(fus.length>3?" and more":"")+". A quick text keeps them warm.","./#today");
     const dw=toDate(day).getDay();
-    if(dw===0){const nws=addDays(day,1);if(!planSessions(nws).length)add("plan",nws,atTime(day,N.times.plan),"Plan your week","Pick 2–3 knock sessions for this week. Takes 30 seconds.","./#plan")}
+    if(dw===0){const nws=day;if(!planSessions(nws).length)add("plan",nws,atTime(day,N.times.plan),"Plan your week","Pick 2–3 knock sessions for this week. Takes 30 seconds.","./#plan")}
     if(dw===3){const nws=addDays(weekStart(day),7),nwe=addDays(nws,6);const n=Object.values(S.jobs).filter(j=>j.status==="scheduled"&&j.date>=nws&&j.date<=nwe).length;
       if(n<(S.settings.thinJobs||0))add("thin",nws,atTime(day,N.times.thin),"Next week's calendar is thin",`${n} job${n===1?"":"s"} booked so far. One session fills it.`,"./#knock")}
   }
